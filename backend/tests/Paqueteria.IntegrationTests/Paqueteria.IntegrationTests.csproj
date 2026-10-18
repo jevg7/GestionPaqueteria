@@ -1,0 +1,29 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+    <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" />
+    <PackageReference Include="xunit.v3" />
+    <PackageReference Include="Testcontainers.PostgreSql" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Paqueteria.Api\Paqueteria.Api.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Se enlazan desde database/, no se copian. -->
+    <EmbeddedResource Include="$(DatabaseDir)\seed.sql" LogicalName="Paqueteria.IntegrationTests.Sql.seed.sql" Link="Sql\seed.sql" />
+    <EmbeddedResource Include="$(DatabaseDir)\tests\flujo_completo.sql" LogicalName="Paqueteria.IntegrationTests.Sql.flujo_completo.sql" Link="Sql\flujo_completo.sql" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="Xunit" />
+  </ItemGroup>
+
+</Project>

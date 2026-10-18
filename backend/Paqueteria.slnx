@@ -1,0 +1,9 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Paqueteria.Api/Paqueteria.Api.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Paqueteria.IntegrationTests/Paqueteria.IntegrationTests.csproj" />
+    <Project Path="tests/Paqueteria.UnitTests/Paqueteria.UnitTests.csproj" />
+  </Folder>
+</Solution>

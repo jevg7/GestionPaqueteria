@@ -1,0 +1,7 @@
+# Finales de línea: LF en el repositorio y en la copia de trabajo, en todos los sistemas
+# y sin depender de core.autocrlf (la mayoría de los archivos ya usan LF).
+* text=auto eol=lf
+
+# Los scripts de cmd necesitan CRLF.
+*.cmd text eol=crlf
+*.bat text eol=crlf
