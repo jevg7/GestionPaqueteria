@@ -625,6 +625,7 @@ No implementar algo solo porque "podría ser útil".
   - Rol de la API `paqueteria_api_app` creado con `search_path = paqueteria, public, extensions` y miembro de `paqueteria_api`.
   - `database/seed.sql` cargado y `database/tests/flujo_completo.sql` verificado en Supabase (`TODAS LAS PRUEBAS PASARON`).
   - Configurados en `user-secrets`: `ConnectionStrings:Paqueteria`, `ConnectionStrings:PaqueteriaOwner`, `Auth:Issuer` (`https://effwbofqvchwffnpxbng.supabase.co/auth/v1`), `Supabase:Url` (`https://effwbofqvchwffnpxbng.supabase.co`), `Supabase:InviteRedirectUrl` (`http://localhost:5173/aceptar-invitacion`), `Supabase:ServiceRoleKey` y `Plataforma:Propietarios:0`.
+  - Auth → *URL Configuration*: Site URL `http://localhost:5173` y Redirect URL `http://localhost:5173/aceptar-invitacion`.
 - [x] Infraestructura base de la API: Swagger/OpenAPI con esquema `Bearer` en desarrollo, ProblemDetails,
   manejo global de errores y SQLSTATE, CORS configurable, logging sanitizado y `GET /health`.
 - [x] Autenticación con Supabase Auth (JWKS), usuario activo y roles desde la BD, `GET /api/me`.
@@ -666,10 +667,10 @@ Con el backend, la base de datos y las credenciales de Supabase listos en `user-
 1. **Inicializar Git:** crear `.gitignore` (excluyendo `bin/`, `obj/`, `.vs/`, `node_modules/`, `dist/`, `.env*`),
    eliminar o archivar fuera del workspace la carpeta obsoleta `Claude stuff/` (v1) y hacer el commit inicial.
 
-### Paso 1 — URL de invitación en el panel de Supabase
+### Paso 1 — URL de invitación en el panel de Supabase (punto 1 completado el 2026-10-18)
 
 1. En el panel de Supabase (*Authentication → URL Configuration*), asegurarse de agregar `http://localhost:5173/aceptar-invitacion`
-   a **Redirect URLs**.
+   a **Redirect URLs** y poner la **Site URL** en `http://localhost:5173` (por defecto venía `http://localhost:3000`).
 2. Cuando tengan el correo del segundo dueño, agregarlo con:
    ```powershell
    dotnet user-secrets --project src/Paqueteria.Api set "Plataforma:Propietarios:1" "<correo dueño 2>"
@@ -725,4 +726,4 @@ Con el backend, la base de datos y las credenciales de Supabase listos en `user-
 ### Paso 5 — Cierre de reglas abiertas y preparación para producción
 
 1. Definir con la agencia las preguntas abiertas de `docs/modelo-datos.md` (sección 9) e implementar migraciones si alguna regla cambia (p. ej. `unaccent` para búsqueda de clientes o volumen en envíos marítimos).
-2. Configurar entorno de producción: base de datos en Supabase conectada por el pooler en **modo sesión (puerto 5432)**, SMTP propio para invitaciones, variables de entorno (`ConnectionStrings`, `Auth`, `Supabase`, `Plataforma`, `Cors:AllowedOrigins`) y pipeline CI/CD.
+2. Configurar entorno de producción: base de datos en Supabase conectada por el pooler en **modo sesión (puerto 5432)**, SMTP propio para invitaciones, Site URL y Redirect URLs de Supabase Auth con la URL del frontend de producción, variables de entorno (`ConnectionStrings`, `Auth`, `Supabase`, `Plataforma`, `Cors:AllowedOrigins`) y pipeline CI/CD.
