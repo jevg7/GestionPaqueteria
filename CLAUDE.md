@@ -39,7 +39,7 @@ Si un cambio contradice el modelo, detente y pregunta; no lo "arregles" en silen
 ```text
 paqueteria/
 ├── backend/        # ASP.NET Core Web API + tests (completo: flujo operativo + administración SaaS)
-├── frontend/       # React + TypeScript + Vite (pendiente de iniciar)
+├── frontend/       # React + TypeScript + Vite (base creada; faltan las pantallas)
 ├── database/       # schema.sql (v2 congelado), seed.sql, tests/
 └── docs/
 ```
@@ -73,7 +73,8 @@ trabajo. Evitar sobrearquitectura.
 - BD: PostgreSQL en Supabase. Esquema propio `paqueteria` (no `public`, para que la Data API de
   Supabase no lo exponga). Historial de migraciones también en `paqueteria`.
 - Auth: Supabase Auth (JWT con claves asimétricas, JWKS); la API valida el token. `usuarios.auth_user_id` = claim `sub`.
-- Frontend (después): React, TypeScript, Vite, Tailwind, React Router, TanStack Query, React Hook Form, Zod.
+- Frontend: React 19, TypeScript 6, Vite 8, Tailwind 4, React Router 8, TanStack Query 5, React Hook Form,
+  Zod 4 y `@supabase/supabase-js` (solo Auth); linter Oxlint. Node 24 LTS.
 
 ## Comandos
 
@@ -123,6 +124,14 @@ dotnet user-secrets --project src/Paqueteria.Api set "Supabase:ServiceRoleKey" "
 
 La API nunca aplica migraciones al arrancar y falla al iniciar si falta `ConnectionStrings:Paqueteria`.
 `ConnectionStrings:PaqueteriaOwner` no es necesaria para ejecutar la API normalmente.
+
+```bash
+# Frontend (desde frontend/, Node 24 LTS). Una vez: copiar .env.example como .env.local y completarlo.
+npm install
+npm run dev     # http://localhost:5173 (puerto fijo: lo usan el CORS de la API y la Redirect URL de Supabase)
+npm run build   # tsc -b + vite build
+npm run lint    # oxlint --deny-warnings: una advertencia también falla
+```
 
 ## Infraestructura base de la API
 
@@ -525,6 +534,18 @@ La BD las hace cumplir con triggers y restricciones; el backend no debe intentar
   409 con un mensaje de negocio. La BD queda como última defensa: si uno llega hasta ella, responde 400.
 - Códigos HTTP: 200, 201, 204, 400, 401, 403, 404, 409, 500, 503.
 
+## Frontend (`frontend/`)
+
+SPA con Vite. `src/main.tsx` monta `QueryClientProvider` y `RouterProvider`; las rutas están en `src/router.ts`
+(React Router 8 en modo datos: `createBrowserRouter` de `react-router`, `RouterProvider` de `react-router/dom`)
+y las páginas en `src/pages/`. Rutas y textos de la interfaz en español.
+
+- **Configuración:** `src/lib/env.ts` valida con Zod, al arrancar, las variables de `.env.local` (plantilla en
+  `.env.example`): `VITE_API_URL` (exige https), `VITE_SUPABASE_URL` y `VITE_SUPABASE_PUBLISHABLE_KEY` (rechaza
+  una clave `sb_secret_`). El resto del código usa `env`, no `import.meta.env`.
+- **Supabase** (`src/lib/supabase.ts`) solo para Auth: los datos van siempre por la API.
+- Imports con extensión (`./router.ts`), como la plantilla de Vite; sin alias de rutas.
+
 ## Seguridad
 
 - Nunca poner contraseñas, cadenas de conexión, API keys ni secretos en el repositorio.
@@ -647,7 +668,7 @@ No implementar algo solo porque "podría ser útil".
 - [ ] **Segundo dueño de la plataforma (opcional cuando esté listo):** agregar `Plataforma:Propietarios:1` en `user-secrets` (el primero ya está configurado).
 - [x] **Repositorio Git (2026-10-18):** inicializado en esta carpeta con `.gitignore`, `.gitattributes` y el commit
   inicial en `main` (de ahí sale `develop`). `Claude stuff/` (copias v1 del esquema) quedó archivada fuera del workspace.
-- [ ] **Frontend (`frontend/`):** aún no se ha creado el proyecto React + TypeScript + Vite.
+- [ ] **Frontend (`frontend/`):** base creada (parte 1 del Paso 2, 2026-10-18); faltan las pantallas.
 - [ ] **Mejoras y decisiones abiertas:**
   - Confirmar con la agencia/contador que la tarifa incluye IVA (`impuestos = 0`).
   - Resolver preguntas abiertas de la sección 9 de `docs/modelo-datos.md` (tarifa marítima por libra o pie³,
@@ -678,7 +699,7 @@ Con el backend, la base de datos y las credenciales de Supabase listos en `user-
 
 ### Paso 2 — Frontend Fase 1: Base, Autenticación, Plataforma y Administración (`frontend/`)
 
-1. **Inicializar proyecto (`frontend/`):** React + TypeScript + Vite + Tailwind CSS + React Router +
+1. **Inicializar proyecto (`frontend/`)** (completado el 2026-10-18): React + TypeScript + Vite + Tailwind CSS + React Router +
    TanStack Query + React Hook Form + Zod + `@supabase/supabase-js`.
 2. **Cliente de API y manejo de errores:**
    - Base URL hacia `https://localhost:7225` (`VITE_API_URL`), adjuntando `Authorization: Bearer <access_token>` de la sesión de Supabase.
