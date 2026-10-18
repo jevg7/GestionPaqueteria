@@ -10,4 +10,19 @@ export default defineConfig({
     port: 5173,
     strictPort: true,
   },
+  build: {
+    rolldownOptions: {
+      output: {
+        // Las librerías van en archivos propios: cambian poco y el navegador las conserva en caché entre
+        // despliegues, que así solo descargan de nuevo el código de la aplicación.
+        codeSplitting: {
+          groups: [
+            { name: 'react', test: /node_modules[\\/](react|react-dom|scheduler|react-router)[\\/]/ },
+            { name: 'supabase', test: /node_modules[\\/]@supabase[\\/]/ },
+            { name: 'vendor', test: /node_modules[\\/]/ },
+          ],
+        },
+      },
+    },
+  },
 })

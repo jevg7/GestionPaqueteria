@@ -1,3 +1,5 @@
+import { useQuery } from '@tanstack/react-query'
+import { api, mensajeDeError } from '../lib/api.ts'
 import { env } from '../lib/env.ts'
 
 // Página provisional hasta que existan el inicio de sesión y los paneles por rol.
@@ -11,6 +13,7 @@ export default function Inicio() {
           <Dato nombre="API" valor={env.VITE_API_URL} />
           <Dato nombre="Supabase" valor={new URL(env.VITE_SUPABASE_URL).host} />
         </dl>
+        <EstadoApi />
       </section>
     </main>
   )
@@ -22,5 +25,24 @@ function Dato({ nombre, valor }: { nombre: string; valor: string }) {
       <dt className="text-slate-500">{nombre}</dt>
       <dd className="break-all text-right font-mono">{valor}</dd>
     </div>
+  )
+}
+
+function EstadoApi() {
+  const salud = useQuery({
+    queryKey: ['salud-api'],
+    queryFn: ({ signal }) => api.get<{ status: string }>('/health', { signal }),
+  })
+
+  const [texto, color] = salud.isPending
+    ? ['Comprobando la conexión con la API…', 'text-slate-500']
+    : salud.isError
+      ? [mensajeDeError(salud.error), 'text-red-700']
+      : ['API conectada.', 'text-green-700']
+
+  return (
+    <p role="status" className={`mt-4 text-sm ${color}`}>
+      {texto}
+    </p>
   )
 }

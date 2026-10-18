@@ -131,6 +131,7 @@ npm install
 npm run dev     # http://localhost:5173 (puerto fijo: lo usan el CORS de la API y la Redirect URL de Supabase)
 npm run build   # tsc -b + vite build
 npm run lint    # oxlint --deny-warnings: una advertencia también falla
+npm test        # Vitest: pruebas unitarias, sin la API ni Supabase
 ```
 
 ## Infraestructura base de la API
@@ -544,6 +545,17 @@ y las páginas en `src/pages/`. Rutas y textos de la interfaz en español.
   `.env.example`): `VITE_API_URL` (exige https), `VITE_SUPABASE_URL` y `VITE_SUPABASE_PUBLISHABLE_KEY` (rechaza
   una clave `sb_secret_`). El resto del código usa `env`, no `import.meta.env`.
 - **Supabase** (`src/lib/supabase.ts`) solo para Auth: los datos van siempre por la API.
+- **API** (`src/lib/api.ts`): `api.get/post/put('/api/…', …)` adjunta `Authorization: Bearer` con el token de la
+  sesión de Supabase y omite los filtros vacíos (`false` sí se envía). Toda respuesta de error se convierte en
+  `ApiError` (`status`, `detail`, `errors` por campo, `traceId`), cuyo `message` siempre se puede mostrar: el
+  `detail` del backend o un texto según el estado. `status` 0 = sin respuesta (red, API apagada, certificado o
+  CORS). Una solicitud cancelada se relanza tal cual. En la interfaz se usa `mensajeDeError(error)`. La API envía
+  los encabezados CORS también en los errores: un 401 llega como 401, no como una falla de red.
+- **TanStack Query** (`src/lib/queryClient.ts`): las consultas solo se reintentan si el error es pasajero (estado 0
+  o ≥ 500), hasta dos veces; las mutaciones nunca (repetir un pago lo duplicaría).
+- **Build:** las librerías van en archivos aparte (`react`, `supabase`, `vendor`, con
+  `build.rolldownOptions.output.codeSplitting`) para que la caché del navegador sobreviva a los despliegues.
+- **Pruebas:** Vitest (`npm test`), junto al código como `*.test.ts`; `api.test.ts` simula `fetch` y la sesión.
 - Imports con extensión (`./router.ts`), como la plantilla de Vite; sin alias de rutas.
 
 ## Seguridad
@@ -668,7 +680,7 @@ No implementar algo solo porque "podría ser útil".
 - [ ] **Segundo dueño de la plataforma (opcional cuando esté listo):** agregar `Plataforma:Propietarios:1` en `user-secrets` (el primero ya está configurado).
 - [x] **Repositorio Git (2026-10-18):** inicializado en esta carpeta con `.gitignore`, `.gitattributes` y el commit
   inicial en `main` (de ahí sale `develop`). `Claude stuff/` (copias v1 del esquema) quedó archivada fuera del workspace.
-- [ ] **Frontend (`frontend/`):** base creada (parte 1 del Paso 2, 2026-10-18); faltan las pantallas.
+- [ ] **Frontend (`frontend/`):** base y cliente de la API (partes 1 y 2 del Paso 2, 2026-10-18); faltan las pantallas.
 - [ ] **Mejoras y decisiones abiertas:**
   - Confirmar con la agencia/contador que la tarifa incluye IVA (`impuestos = 0`).
   - Resolver preguntas abiertas de la sección 9 de `docs/modelo-datos.md` (tarifa marítima por libra o pie³,
@@ -701,7 +713,7 @@ Con el backend, la base de datos y las credenciales de Supabase listos en `user-
 
 1. **Inicializar proyecto (`frontend/`)** (completado el 2026-10-18): React + TypeScript + Vite + Tailwind CSS + React Router +
    TanStack Query + React Hook Form + Zod + `@supabase/supabase-js`.
-2. **Cliente de API y manejo de errores:**
+2. **Cliente de API y manejo de errores** (completado el 2026-10-18):
    - Base URL hacia `https://localhost:7225` (`VITE_API_URL`), adjuntando `Authorization: Bearer <access_token>` de la sesión de Supabase.
    - Interceptor/helper para leer `application/problem+json` (`ProblemDetails`) y mostrar el campo `detail` en errores `400`, `403`, `409` y `503`.
 3. **Sesión, identidad (`GET /api/me`) y navegación por rol:**
