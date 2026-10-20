@@ -569,10 +569,13 @@ SPA con Vite. `src/main.tsx` monta `QueryClientProvider`, `SesionProvider` y `Ro
   `secciones.test.ts` las compara con ese archivo, así que cambiar un permiso en el backend obliga a actualizar el
   menú. `RequiereRoles` muestra "Sin acceso" en una sección no permitida. `PanelAgencia` precarga `/api/catalogs`
   (`agencia/catalogos.ts`).
-- **Invitación** (`/aceptar-invitacion`, `Supabase:InviteRedirectUrl`): supabase-js toma la sesión del enlace
-  (flujo implícito) y el invitado elige su contraseña (≥ 8 caracteres; Supabase puede exigir más:
-  `weak_password`). `lib/supabase.ts` lee la URL antes que Supabase para reconocer un enlace vencido
-  (`otp_expired`). Los errores de Supabase Auth se traducen en `auth/mensajesAuth.ts`.
+- **Invitación y recuperación** (`/aceptar-invitacion`, `Supabase:InviteRedirectUrl`): supabase-js toma la
+  sesión del enlace (flujo implícito) y el usuario elige su contraseña (≥ 8 caracteres; Supabase puede exigir
+  más: `weak_password`). `lib/supabase.ts` lee la URL antes que Supabase para reconocer el tipo de enlace y uno
+  vencido (`otp_expired`). Los correos del panel de Supabase, o los de una `redirect_to` no permitida, llegan a
+  la Site URL (`/`): `router.tsx` los lleva a `/aceptar-invitacion` antes de crear el router; si no, el usuario
+  entraría con la sesión del enlace sin elegir contraseña. Los errores de Supabase Auth se traducen en
+  `auth/mensajesAuth.ts`.
 - **Pruebas:** Vitest (`npm test`), junto al código como `*.test.ts`: cliente de la API (simula `fetch` y la
   sesión), secciones contra `Permisos.cs`, mensajes de Supabase y lectura del enlace de invitación.
 - Imports con extensión (`./router.tsx`), como la plantilla de Vite; sin alias de rutas. Exportaciones con nombre.

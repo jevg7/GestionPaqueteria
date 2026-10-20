@@ -23,8 +23,8 @@ const esquema = z
 type Datos = z.infer<typeof esquema>
 
 /**
- * Destino del enlace del correo de invitación: Supabase ya inició la sesión del invitado con el enlace;
- * aquí elige su contraseña y entra.
+ * Destino de los enlaces de invitación y de recuperación: Supabase ya inició la sesión con el enlace; aquí el
+ * usuario elige su contraseña y entra. El router trae aquí esos enlaces aunque lleguen a otra ruta.
  */
 export function AceptarInvitacion() {
   const sesion = useSesion()
@@ -43,10 +43,10 @@ export function AceptarInvitacion() {
       <PantallaCentrada titulo={enlaceDeAuth.error ? 'El enlace no sirve' : 'Aceptar invitación'}>
         <p className="text-sm text-slate-600">
           {enlaceDeAuth.error === 'otp_expired'
-            ? 'El enlace de invitación expiró o ya se usó. Pida al administrador de su agencia que le reenvíe la invitación.'
+            ? 'El enlace expiró o ya se usó. Si era una invitación, pida al administrador de su agencia que se la reenvíe.'
             : enlaceDeAuth.error
-              ? 'El enlace de invitación no es válido. Pida al administrador de su agencia que le reenvíe la invitación.'
-              : 'Para crear su contraseña, abra el enlace de invitación que recibió por correo.'}
+              ? 'El enlace no es válido. Si era una invitación, pida al administrador de su agencia que se la reenvíe.'
+              : 'Para crear su contraseña, abra el enlace que recibió por correo.'}
         </p>
         <Link to="/iniciar-sesion" className="mt-6 inline-block text-sm font-medium text-blue-700 hover:underline">
           Ir a iniciar sesión
@@ -66,7 +66,7 @@ export function AceptarInvitacion() {
   }
 
   return (
-    <PantallaCentrada titulo="Cree su contraseña">
+    <PantallaCentrada titulo={enlaceDeAuth.tipo === 'recovery' ? 'Elija una contraseña nueva' : 'Cree su contraseña'}>
       <p className="text-sm text-slate-600">
         Con ella entrará al sistema como <strong className="break-all text-slate-900">{sesion.user.email}</strong>.
       </p>

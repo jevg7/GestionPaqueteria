@@ -13,3 +13,11 @@ export function leerEnlaceDeAuth(fragmento: string, consulta: string): EnlaceDeA
   const leer = (nombre: string) => delFragmento.get(nombre) ?? deLaConsulta.get(nombre) ?? undefined
   return { tipo: leer('type'), error: leer('error_code') ?? leer('error') }
 }
+
+/**
+ * El enlace pide elegir contraseña (invitación o recuperación) o no sirvió: en ambos casos se muestra la
+ * página de la contraseña, que también explica un enlace vencido.
+ */
+export function llevaALaContrasena(enlace: EnlaceDeAuth): boolean {
+  return enlace.tipo === 'invite' || enlace.tipo === 'recovery' || enlace.error !== undefined
+}

@@ -1,5 +1,18 @@
 import { describe, expect, it } from 'vitest'
-import { leerEnlaceDeAuth } from './enlaceDeAuth.ts'
+import { leerEnlaceDeAuth, llevaALaContrasena } from './enlaceDeAuth.ts'
+
+describe('llevaALaContrasena', () => {
+  it('las invitaciones, las recuperaciones y los enlaces que fallaron van a la página de la contraseña', () => {
+    expect(llevaALaContrasena({ tipo: 'invite' })).toBe(true)
+    expect(llevaALaContrasena({ tipo: 'recovery' })).toBe(true)
+    expect(llevaALaContrasena({ error: 'otp_expired' })).toBe(true)
+  })
+
+  it('una dirección normal u otro tipo de enlace no', () => {
+    expect(llevaALaContrasena({})).toBe(false)
+    expect(llevaALaContrasena({ tipo: 'magiclink' })).toBe(false)
+  })
+})
 
 describe('leerEnlaceDeAuth', () => {
   it('reconoce el enlace de una invitación', () => {
