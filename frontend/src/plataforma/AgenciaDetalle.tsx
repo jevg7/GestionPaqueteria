@@ -3,6 +3,8 @@ import { useState } from 'react'
 import { Link, useLocation } from 'react-router'
 import { Aviso } from '../components/Aviso.tsx'
 import { Boton } from '../components/Boton.tsx'
+import { Confirmacion } from '../components/Confirmacion.tsx'
+import { Dato } from '../components/Dato.tsx'
 import { EnlaceBoton } from '../components/EnlaceBoton.tsx'
 import { mensajeDeError } from '../lib/api.ts'
 import { formatearFechaHora } from '../lib/formato.ts'
@@ -81,47 +83,25 @@ function Detalle({ agencia, navegacion }: { agencia: Agencia; navegacion: Estado
       </div>
 
       {confirmando && (
-        <div className="mt-4 rounded-xl border border-slate-200 bg-white p-4">
-          <p className="text-sm text-slate-700">
-            {suspender
-              ? `¿Suspender ${agencia.nombre}? Sus usuarios perderán el acceso desde su siguiente acción. Los datos se conservan y la agencia se puede reactivar cuando quiera.`
-              : `¿Reactivar ${agencia.nombre}? Sus usuarios activos podrán volver a entrar.`}
-          </p>
-          {cambioDeEstado.isError && (
-            <div className="mt-3">
-              <Aviso tipo="error">{mensajeDeError(cambioDeEstado.error)}</Aviso>
-            </div>
-          )}
-          <div className="mt-4 flex flex-wrap gap-3">
-            <Boton
-              variante={suspender ? 'peligro' : 'primario'}
-              cargando={cambioDeEstado.isPending}
-              onClick={() => cambioDeEstado.mutate(suspender)}
-            >
-              {suspender ? 'Sí, suspender' : 'Sí, reactivar'}
-            </Boton>
-            <Boton
-              variante="secundario"
-              disabled={cambioDeEstado.isPending}
-              onClick={() => {
-                cambioDeEstado.reset()
-                setConfirmando(false)
-              }}
-            >
-              Cancelar
-            </Boton>
-          </div>
+        <div className="mt-4">
+          <Confirmacion
+            mensaje={
+              suspender
+                ? `¿Suspender ${agencia.nombre}? Sus usuarios perderán el acceso desde su siguiente acción. Los datos se conservan y la agencia se puede reactivar cuando quiera.`
+                : `¿Reactivar ${agencia.nombre}? Sus usuarios activos podrán volver a entrar.`
+            }
+            textoConfirmar={suspender ? 'Sí, suspender' : 'Sí, reactivar'}
+            variante={suspender ? 'peligro' : 'primario'}
+            cargando={cambioDeEstado.isPending}
+            error={cambioDeEstado.isError ? mensajeDeError(cambioDeEstado.error) : undefined}
+            alConfirmar={() => cambioDeEstado.mutate(suspender)}
+            alCancelar={() => {
+              cambioDeEstado.reset()
+              setConfirmando(false)
+            }}
+          />
         </div>
       )}
     </section>
-  )
-}
-
-function Dato({ nombre, valor }: { nombre: string; valor: string | null }) {
-  return (
-    <div>
-      <dt className="text-xs font-medium uppercase tracking-wide text-slate-500">{nombre}</dt>
-      <dd className="mt-1 break-words text-sm">{valor ?? '—'}</dd>
-    </div>
   )
 }

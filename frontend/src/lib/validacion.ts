@@ -27,6 +27,26 @@ export function correoOpcional(mensajeLargo: string, mensajeFormato: string) {
     .refine((valor) => valor === '' || z.email().safeParse(valor).success, mensajeFormato)
 }
 
+/**
+ * Decimal positivo escrito en un campo de texto (precio, tipo de cambio) con hasta `decimales` decimales,
+ * como el [Range] + IValidatableObject del backend. Sale del esquema como número.
+ */
+export function decimalPositivo(decimales: number, mensajes: { vacio: string; formato: string; cero: string }) {
+  const patron = new RegExp(`^\\d{1,8}(\\.\\d{1,${decimales}})?$`)
+  return z
+    .string()
+    .trim()
+    .min(1, mensajes.vacio)
+    .regex(patron, mensajes.formato)
+    .transform(Number)
+    .refine((valor) => valor > 0, mensajes.cero)
+}
+
+/** Un día del calendario de un <input type="date"> ("yyyy-MM-dd"). */
+export function diaObligatorio(mensajeVacio: string) {
+  return z.string().regex(/^\d{4}-\d{2}-\d{2}$/, mensajeVacio)
+}
+
 export const telefonoOpcional = z
   .string()
   .trim()

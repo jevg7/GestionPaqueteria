@@ -1,5 +1,29 @@
 import { describe, expect, it } from 'vitest'
-import { correoOpcional, telefonoOpcional, textoObligatorio } from './validacion.ts'
+import { correoOpcional, decimalPositivo, diaObligatorio, telefonoOpcional, textoObligatorio } from './validacion.ts'
+
+describe('decimalPositivo (precios y tipos de cambio)', () => {
+  const precio = decimalPositivo(4, { vacio: 'Falta.', formato: 'Formato.', cero: 'Cero.' })
+  const mensaje = (valor: string) => precio.safeParse(valor).error?.issues[0].message
+
+  it('convierte el texto en número', () => {
+    expect(precio.parse(' 3.5 ')).toBe(3.5)
+    expect(precio.parse('36.6243')).toBe(36.6243)
+  })
+
+  it('rechaza lo vacío, el formato equivocado, más de 4 decimales y el cero', () => {
+    expect(mensaje('')).toBe('Falta.')
+    expect(mensaje('3,5')).toBe('Formato.')
+    expect(mensaje('3.12345')).toBe('Formato.')
+    expect(mensaje('-1')).toBe('Formato.')
+    expect(mensaje('abc')).toBe('Formato.')
+    expect(mensaje('0.0000')).toBe('Cero.')
+  })
+
+  it('un día del calendario tiene la forma de <input type="date">', () => {
+    expect(diaObligatorio('Falta el día.').safeParse('2026-10-20').success).toBe(true)
+    expect(diaObligatorio('Falta el día.').safeParse('').error?.issues[0].message).toBe('Falta el día.')
+  })
+})
 
 const MENSAJE_TELEFONO = 'El teléfono solo admite dígitos, espacios, guiones, paréntesis y un + inicial.'
 

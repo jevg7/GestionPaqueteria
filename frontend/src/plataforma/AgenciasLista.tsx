@@ -1,11 +1,12 @@
 import { useQuery } from '@tanstack/react-query'
-import { Link, useLocation, useSearchParams } from 'react-router'
+import { Link, useLocation } from 'react-router'
 import { Aviso } from '../components/Aviso.tsx'
 import { Boton } from '../components/Boton.tsx'
 import { EnlaceBoton } from '../components/EnlaceBoton.tsx'
 import { Paginacion } from '../components/Paginacion.tsx'
 import { mensajeDeError } from '../lib/api.ts'
 import { useDiferido } from '../lib/useDiferido.ts'
+import { useFiltrosDeLista } from '../lib/useFiltrosDeLista.ts'
 import { opcionesListaAgencias, TAMANO_DE_PAGINA, type EstadoAgencia } from './agencias.ts'
 import { EtiquetaEstadoAgencia } from './EtiquetaEstadoAgencia.tsx'
 
@@ -19,28 +20,13 @@ const campo =
   'rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm shadow-xs focus:border-blue-700 focus:outline-2 focus:outline-blue-700/20'
 
 export function AgenciasLista() {
-  const [parametros, setParametros] = useSearchParams()
+  const { leer, pagina, cambiar, cambiarPagina } = useFiltrosDeLista()
   const ubicacion = useLocation()
-  const buscar = parametros.get('buscar') ?? ''
-  const estado = estados.find((opcion) => opcion.valor === parametros.get('estado'))?.valor ?? ''
-  const pagina = Math.max(1, Number.parseInt(parametros.get('pagina') ?? '', 10) || 1)
+  const buscar = leer('buscar')
+  const estado = estados.find((opcion) => opcion.valor === leer('estado'))?.valor ?? ''
   // El cuadro de búsqueda responde al instante; la consulta sale cuando se deja de escribir.
   const buscarDiferido = useDiferido(buscar.trim())
   const lista = useQuery(opcionesListaAgencias({ buscar: buscarDiferido, estado, pagina }))
-
-  // Los filtros viven en la dirección: sobreviven a una recarga y a volver desde el detalle.
-  const cambiar = (nombre: 'buscar' | 'estado' | 'pagina', valor: string) =>
-    setParametros(
-      (actuales) => {
-        const nuevos = new URLSearchParams(actuales)
-        if (valor) nuevos.set(nombre, valor)
-        else nuevos.delete(nombre)
-        // Con otro filtro la lista es otra: se vuelve a la primera página.
-        if (nombre !== 'pagina') nuevos.delete('pagina')
-        return nuevos
-      },
-      { replace: true },
-    )
 
   return (
     <section>
@@ -113,7 +99,7 @@ export function AgenciasLista() {
               pagina={pagina}
               tamano={TAMANO_DE_PAGINA}
               total={lista.data.total}
-              alCambiar={(nueva) => cambiar('pagina', nueva === 1 ? '' : String(nueva))}
+              alCambiar={cambiarPagina}
             />
           </div>
         )}

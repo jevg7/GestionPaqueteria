@@ -1,5 +1,9 @@
-import { createBrowserRouter, Navigate } from 'react-router'
+import { createBrowserRouter, Navigate, Outlet, type RouteObject } from 'react-router'
 import { PanelAgencia } from './agencia/PanelAgencia.tsx'
+import { UsuarioDetalle } from './agencia/UsuarioDetalle.tsx'
+import { UsuarioEditar } from './agencia/UsuarioEditar.tsx'
+import { UsuarioNuevo } from './agencia/UsuarioNuevo.tsx'
+import { UsuariosLista } from './agencia/UsuariosLista.tsx'
 import { AccesoProtegido } from './auth/AccesoProtegido.tsx'
 import { AceptarInvitacion } from './auth/AceptarInvitacion.tsx'
 import { IniciarSesion } from './auth/IniciarSesion.tsx'
@@ -17,6 +21,16 @@ import { AgenciasLista } from './plataforma/AgenciasLista.tsx'
 import { PanelPlataforma } from './plataforma/PanelPlataforma.tsx'
 
 const PAGINA_DE_CONTRASENA = '/aceptar-invitacion'
+
+/** Páginas de cada sección de la agencia (por su ruta en auth/secciones.ts). */
+const paginasDeSeccion: Partial<Record<string, RouteObject[]>> = {
+  usuarios: [
+    { index: true, Component: UsuariosLista },
+    { path: 'nuevo', Component: UsuarioNuevo },
+    { path: ':id', Component: UsuarioDetalle },
+    { path: ':id/editar', Component: UsuarioEditar },
+  ],
+}
 
 // Un enlace de invitación o de recuperación puede llegar a otra ruta: los correos que envía el panel de
 // Supabase (o uno cuya redirect_to no está permitida) llevan a la Site URL. Si se quedara ahí, el usuario
@@ -48,13 +62,15 @@ export const router = createBrowserRouter([
       },
       {
         Component: PanelAgencia,
+        // Cada sección exige sus roles para todas sus páginas; las que aún no existen dicen "en construcción".
         children: seccionesAgencia.map((seccion) => ({
           path: seccion.ruta,
           element: (
             <RequiereRoles roles={seccion.roles}>
-              <EnConstruccion titulo={seccion.titulo} />
+              <Outlet />
             </RequiereRoles>
           ),
+          children: paginasDeSeccion[seccion.ruta] ?? [{ index: true, element: <EnConstruccion titulo={seccion.titulo} /> }],
         })),
       },
     ],
