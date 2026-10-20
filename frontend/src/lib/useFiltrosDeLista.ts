@@ -17,7 +17,10 @@ export function useFiltrosDeLista() {
         if (nombre !== 'pagina') nuevos.delete('pagina')
         return nuevos
       },
-      { replace: true },
+      // flushSync: los campos de búsqueda y las casillas toman su valor de la dirección; si la actualización
+      // fuera una transición (lo normal en React Router), mostrarían el valor viejo y al escribir rápido se
+      // perderían letras.
+      { replace: true, flushSync: true },
     )
 
   return {
