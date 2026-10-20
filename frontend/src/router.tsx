@@ -1,5 +1,7 @@
 import { createBrowserRouter, Navigate, Outlet, type RouteObject } from 'react-router'
 import { PanelAgencia } from './agencia/PanelAgencia.tsx'
+import { TarifaNueva } from './agencia/TarifaNueva.tsx'
+import { Tarifas } from './agencia/Tarifas.tsx'
 import { UsuarioDetalle } from './agencia/UsuarioDetalle.tsx'
 import { UsuarioEditar } from './agencia/UsuarioEditar.tsx'
 import { UsuarioNuevo } from './agencia/UsuarioNuevo.tsx'
@@ -29,6 +31,18 @@ const paginasDeSeccion: Partial<Record<string, RouteObject[]>> = {
     { path: 'nuevo', Component: UsuarioNuevo },
     { path: ':id', Component: UsuarioDetalle },
     { path: ':id/editar', Component: UsuarioEditar },
+  ],
+  // Consultan ADMIN, AGENTE y BODEGA; registrar es solo del ADMIN.
+  tarifas: [
+    { index: true, Component: Tarifas },
+    {
+      path: 'nueva',
+      element: (
+        <RequiereRoles roles={['ADMIN']}>
+          <TarifaNueva />
+        </RequiereRoles>
+      ),
+    },
   ],
 }
 
