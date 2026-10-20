@@ -2,6 +2,7 @@ import { createBrowserRouter, Navigate, Outlet, type RouteObject } from 'react-r
 import { PanelAgencia } from './agencia/PanelAgencia.tsx'
 import { TarifaNueva } from './agencia/TarifaNueva.tsx'
 import { Tarifas } from './agencia/Tarifas.tsx'
+import { TipoDeCambio } from './agencia/TipoDeCambio.tsx'
 import { UsuarioDetalle } from './agencia/UsuarioDetalle.tsx'
 import { UsuarioEditar } from './agencia/UsuarioEditar.tsx'
 import { UsuarioNuevo } from './agencia/UsuarioNuevo.tsx'
@@ -32,6 +33,8 @@ const paginasDeSeccion: Partial<Record<string, RouteObject[]>> = {
     { path: ':id', Component: UsuarioDetalle },
     { path: ':id/editar', Component: UsuarioEditar },
   ],
+  // Consultan ADMIN y AGENTE; el formulario para registrar solo lo ve el ADMIN.
+  'tipo-de-cambio': [{ index: true, Component: TipoDeCambio }],
   // Consultan ADMIN, AGENTE y BODEGA; registrar es solo del ADMIN.
   tarifas: [
     { index: true, Component: Tarifas },
