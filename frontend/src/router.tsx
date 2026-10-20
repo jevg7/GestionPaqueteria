@@ -1,4 +1,4 @@
-import { createBrowserRouter } from 'react-router'
+import { createBrowserRouter, Navigate } from 'react-router'
 import { PanelAgencia } from './agencia/PanelAgencia.tsx'
 import { AccesoProtegido } from './auth/AccesoProtegido.tsx'
 import { AceptarInvitacion } from './auth/AceptarInvitacion.tsx'
@@ -10,6 +10,10 @@ import { llevaALaContrasena } from './lib/enlaceDeAuth.ts'
 import { enlaceDeAuth } from './lib/supabase.ts'
 import { EnConstruccion } from './pages/EnConstruccion.tsx'
 import { NoEncontrada } from './pages/NoEncontrada.tsx'
+import { AgenciaDetalle } from './plataforma/AgenciaDetalle.tsx'
+import { AgenciaEditar } from './plataforma/AgenciaEditar.tsx'
+import { AgenciaNueva } from './plataforma/AgenciaNueva.tsx'
+import { AgenciasLista } from './plataforma/AgenciasLista.tsx'
 import { PanelPlataforma } from './plataforma/PanelPlataforma.tsx'
 
 const PAGINA_DE_CONTRASENA = '/aceptar-invitacion'
@@ -34,7 +38,13 @@ export const router = createBrowserRouter([
       {
         path: 'plataforma',
         Component: PanelPlataforma,
-        children: [{ index: true, element: <EnConstruccion titulo="Agencias" /> }],
+        children: [
+          { index: true, element: <Navigate to="agencias" replace /> },
+          { path: 'agencias', Component: AgenciasLista },
+          { path: 'agencias/nueva', Component: AgenciaNueva },
+          { path: 'agencias/:id', Component: AgenciaDetalle },
+          { path: 'agencias/:id/editar', Component: AgenciaEditar },
+        ],
       },
       {
         Component: PanelAgencia,

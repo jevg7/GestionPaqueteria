@@ -1,4 +1,4 @@
-import { Navigate, Outlet } from 'react-router'
+import { Navigate, NavLink, Outlet } from 'react-router'
 import { nombreCompleto, nombresDeRol, useIdentidadActual } from '../auth/identidad.ts'
 import { MenuUsuario } from '../components/MenuUsuario.tsx'
 
@@ -17,6 +17,16 @@ export function PanelPlataforma() {
           </div>
           <MenuUsuario nombre={nombreCompleto(identidad)} detalle={nombresDeRol.PLATAFORMA} />
         </div>
+        <nav aria-label="Secciones" className="mx-auto flex max-w-6xl gap-1 px-2">
+          <NavLink
+            to="agencias"
+            className={({ isActive }) =>
+              `border-b-2 px-3 py-2 text-sm ${isActive ? 'border-blue-700 font-medium text-blue-800' : 'border-transparent text-slate-600 hover:text-slate-900'}`
+            }
+          >
+            Agencias
+          </NavLink>
+        </nav>
       </header>
       <main className="mx-auto max-w-6xl px-4 py-6">
         <Outlet />

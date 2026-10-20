@@ -552,7 +552,14 @@ SPA con Vite. `src/main.tsx` monta `QueryClientProvider`, `SesionProvider` y `Ro
   `ApiError` (`status`, `detail`, `errors` por campo, `traceId`), cuyo `message` siempre se puede mostrar: el
   `detail` del backend o un texto según el estado. `status` 0 = sin respuesta (red, API apagada, certificado o
   CORS). Una solicitud cancelada se relanza tal cual. En la interfaz se usa `mensajeDeError(error)`. La API envía
-  los encabezados CORS también en los errores: un 401 llega como 401, no como una falla de red.
+  los encabezados CORS también en los errores: un 401 llega como 401, no como una falla de red. `ApiError` y
+  `mensajeDeError` viven en `lib/errores.ts` (sin dependencias, para módulos y pruebas puras); `api.ts` los
+  reexporta. `Pagina<T>` = `PagedResponse<T>`.
+- **Formularios:** React Hook Form + Zod con las mismas reglas y mensajes que las DataAnnotations del DTO
+  (`lib/validacion.ts`: teléfono con el patrón del backend, correos y textos recortados). Si la API igual
+  responde 400 con `errors`, `mensajeDelEnvio` (`lib/formularios.ts`) los pone en sus campos (claves de C# →
+  camelCase) y devuelve el mensaje general. Toda escritura va por `useMutation`, así un 401 también cierra la
+  sesión. Fechas en hora de Managua (`lib/formato.ts`).
 - **TanStack Query** (`src/lib/queryClient.ts`): las consultas solo se reintentan si el error es pasajero (estado 0
   o ≥ 500), hasta dos veces; las mutaciones nunca (repetir un pago lo duplicaría).
 - **Build:** las librerías van en archivos aparte (`react`, `supabase`, `vendor`, con
@@ -576,8 +583,12 @@ SPA con Vite. `src/main.tsx` monta `QueryClientProvider`, `SesionProvider` y `Ro
   la Site URL (`/`): `router.tsx` los lleva a `/aceptar-invitacion` antes de crear el router; si no, el usuario
   entraría con la sesión del enlace sin elegir contraseña. Los errores de Supabase Auth se traducen en
   `auth/mensajesAuth.ts`.
+- **Panel de la plataforma** (`plataforma/`): `/plataforma/agencias` (lista; búsqueda, estado y página viven en
+  la dirección), `/nueva` (agencia + invitación de su primer ADMIN; todo o nada en la API), `/:id` (detalle;
+  suspender o reactivar con confirmación) y `/:id/editar`. Las claves de caché cuelgan de `claveAgencias`.
 - **Pruebas:** Vitest (`npm test`), junto al código como `*.test.ts`: cliente de la API (simula `fetch` y la
-  sesión), secciones contra `Permisos.cs`, mensajes de Supabase y lectura del enlace de invitación.
+  sesión), secciones contra `Permisos.cs`, mensajes de Supabase, lectura del enlace de invitación, reglas de
+  validación, errores por campo, fechas y esquemas de agencias.
 - Imports con extensión (`./router.tsx`), como la plantilla de Vite; sin alias de rutas. Exportaciones con nombre.
 
 ## Seguridad
@@ -702,15 +713,17 @@ No implementar algo solo porque "podría ser útil".
 - [ ] **Segundo dueño de la plataforma (opcional cuando esté listo):** agregar `Plataforma:Propietarios:1` en `user-secrets` (el primero ya está configurado).
 - [x] **Repositorio Git (2026-10-18):** inicializado en esta carpeta con `.gitignore`, `.gitattributes` y el commit
   inicial en `main` (de ahí sale `develop`). `Claude stuff/` (copias v1 del esquema) quedó archivada fuera del workspace.
-- [ ] **Frontend (`frontend/`):** base, cliente de la API, sesión y navegación por rol (partes 1 a 3 del Paso 2,
-  2026-10-20); faltan las pantallas de cada sección.
+- [ ] **Frontend (`frontend/`):** base, cliente de la API, sesión, navegación por rol y panel de agencias (partes 1
+  a 4 del Paso 2, 2026-10-20); falta la administración de la agencia y las pantallas de cada sección.
 - [ ] **Mejoras y decisiones abiertas:**
   - Confirmar con la agencia/contador que la tarifa incluye IVA (`impuestos = 0`).
   - Resolver preguntas abiertas de la sección 9 de `docs/modelo-datos.md` (tarifa marítima por libra o pie³,
     redondeo/mínimo de peso, paquetes sin aviso en Miami, cédula del cliente).
   - Búsqueda de clientes sin distinguir acentos (`unaccent` + migración).
   - Evaluar si se requieren permisos finos (`Permiso`/`RolPermiso`) y cuadre de caja del repartidor.
-  - Definir `Cors:AllowedOrigins` y SMTP propio en Supabase para producción.
+  - Definir `Cors:AllowedOrigins` y SMTP propio en Supabase para producción. Sin SMTP propio, Supabase solo
+    envía correos a los miembros del equipo del proyecto (y 2 por hora): una invitación a otro correo falla con
+    `email_address_not_authorized`, que la API muestra hoy como "El sistema de acceso rechazó el correo…".
 
 ---
 
@@ -745,7 +758,7 @@ Con el backend, la base de datos y las credenciales de Supabase listos en `user-
      - Si responde `403` (`SIN_CUENTA`, `USUARIO_INACTIVO`, `AGENCIA_SUSPENDIDA`), mostrar pantalla de bloqueo con el mensaje de `detail` y opción de cerrar sesión.
      - Si `tipo === "PLATAFORMA"`, dirigir al **Panel de Plataforma**.
      - Si `tipo === "AGENCIA"`, precargar `GET /api/catalogs` y mostrar el layout de la agencia habilitando secciones según `roles` (`ADMIN`, `AGENTE`, `BODEGA`, `REPARTIDOR`).
-4. **Panel del dueño de la plataforma (`PLATAFORMA`):**
+4. **Panel del dueño de la plataforma (`PLATAFORMA`)** (completado el 2026-10-20):
    - Listado, búsqueda y filtro por estado (`GET /api/platform/agencies`).
    - Alta de agencia + invitación de su primer `ADMIN` (`POST /api/platform/agencies`).
    - Edición de datos de la agencia (`PUT /{id}`) y suspensión/reactivación (`POST /{id}/suspend` y `/activate`).
