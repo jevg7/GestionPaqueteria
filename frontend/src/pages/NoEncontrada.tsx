@@ -1,6 +1,6 @@
 import { Link } from 'react-router'
 
-export default function NoEncontrada() {
+export function NoEncontrada() {
   return (
     <main className="grid min-h-screen place-items-center bg-slate-50 px-4 text-center text-slate-900">
       <div>

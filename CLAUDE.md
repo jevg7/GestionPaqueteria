@@ -537,9 +537,11 @@ La BD las hace cumplir con triggers y restricciones; el backend no debe intentar
 
 ## Frontend (`frontend/`)
 
-SPA con Vite. `src/main.tsx` monta `QueryClientProvider` y `RouterProvider`; las rutas están en `src/router.ts`
-(React Router 8 en modo datos: `createBrowserRouter` de `react-router`, `RouterProvider` de `react-router/dom`)
-y las páginas en `src/pages/`. Rutas y textos de la interfaz en español.
+SPA con Vite. `src/main.tsx` monta `QueryClientProvider`, `SesionProvider` y `RouterProvider`; las rutas están en
+`src/router.tsx` (React Router 8 en modo datos: `createBrowserRouter` de `react-router`, `RouterProvider` de
+`react-router/dom`). Carpetas: `auth/` (sesión, identidad, protección de rutas, inicio de sesión e invitación),
+`agencia/` y `plataforma/` (paneles y, después, sus módulos), `components/` (interfaz compartida), `lib/`
+(infraestructura) y `pages/` (páginas genéricas). Rutas y textos de la interfaz en español.
 
 - **Configuración:** `src/lib/env.ts` valida con Zod, al arrancar, las variables de `.env.local` (plantilla en
   `.env.example`): `VITE_API_URL` (exige https), `VITE_SUPABASE_URL` y `VITE_SUPABASE_PUBLISHABLE_KEY` (rechaza
@@ -555,8 +557,25 @@ y las páginas en `src/pages/`. Rutas y textos de la interfaz en español.
   o ≥ 500), hasta dos veces; las mutaciones nunca (repetir un pago lo duplicaría).
 - **Build:** las librerías van en archivos aparte (`react`, `supabase`, `vendor`, con
   `build.rolldownOptions.output.codeSplitting`) para que la caché del navegador sobreviva a los despliegues.
-- **Pruebas:** Vitest (`npm test`), junto al código como `*.test.ts`; `api.test.ts` simula `fetch` y la sesión.
-- Imports con extensión (`./router.ts`), como la plantilla de Vite; sin alias de rutas.
+- **Sesión** (`auth/SesionProvider.tsx`, `useSesion`): sigue `onAuthStateChange` de Supabase y, al cambiar de
+  usuario o cerrar sesión, vacía la caché de TanStack Query. `cerrarSesion()` (`lib/supabase.ts`) cierra solo en
+  este dispositivo (`scope: 'local'`). Un 401 de la API cierra la sesión y la pantalla de inicio de sesión explica
+  el motivo (`auth/salida.ts`).
+- **Identidad** (`auth/identidad.ts`): sale de `GET /api/me` (clave `['identidad', <id de Supabase>]`), no del
+  token. `AccesoProtegido` (ruta `/`) exige sesión y una cuenta con acceso: 403 → pantalla de bloqueo con el
+  `detail` del backend; otro error → reintentar o cerrar sesión. Dentro, `useIdentidadActual()`.
+- **Navegación por rol:** `/` lleva al dueño a `/plataforma` y al empleado a la primera sección de sus roles.
+  `auth/secciones.ts` define cada sección de la agencia con su permiso de `Auth/Permisos.cs` y sus roles;
+  `secciones.test.ts` las compara con ese archivo, así que cambiar un permiso en el backend obliga a actualizar el
+  menú. `RequiereRoles` muestra "Sin acceso" en una sección no permitida. `PanelAgencia` precarga `/api/catalogs`
+  (`agencia/catalogos.ts`).
+- **Invitación** (`/aceptar-invitacion`, `Supabase:InviteRedirectUrl`): supabase-js toma la sesión del enlace
+  (flujo implícito) y el invitado elige su contraseña (≥ 8 caracteres; Supabase puede exigir más:
+  `weak_password`). `lib/supabase.ts` lee la URL antes que Supabase para reconocer un enlace vencido
+  (`otp_expired`). Los errores de Supabase Auth se traducen en `auth/mensajesAuth.ts`.
+- **Pruebas:** Vitest (`npm test`), junto al código como `*.test.ts`: cliente de la API (simula `fetch` y la
+  sesión), secciones contra `Permisos.cs`, mensajes de Supabase y lectura del enlace de invitación.
+- Imports con extensión (`./router.tsx`), como la plantilla de Vite; sin alias de rutas. Exportaciones con nombre.
 
 ## Seguridad
 
@@ -680,7 +699,8 @@ No implementar algo solo porque "podría ser útil".
 - [ ] **Segundo dueño de la plataforma (opcional cuando esté listo):** agregar `Plataforma:Propietarios:1` en `user-secrets` (el primero ya está configurado).
 - [x] **Repositorio Git (2026-10-18):** inicializado en esta carpeta con `.gitignore`, `.gitattributes` y el commit
   inicial en `main` (de ahí sale `develop`). `Claude stuff/` (copias v1 del esquema) quedó archivada fuera del workspace.
-- [ ] **Frontend (`frontend/`):** base y cliente de la API (partes 1 y 2 del Paso 2, 2026-10-18); faltan las pantallas.
+- [ ] **Frontend (`frontend/`):** base, cliente de la API, sesión y navegación por rol (partes 1 a 3 del Paso 2,
+  2026-10-20); faltan las pantallas de cada sección.
 - [ ] **Mejoras y decisiones abiertas:**
   - Confirmar con la agencia/contador que la tarifa incluye IVA (`impuestos = 0`).
   - Resolver preguntas abiertas de la sección 9 de `docs/modelo-datos.md` (tarifa marítima por libra o pie³,
@@ -716,7 +736,7 @@ Con el backend, la base de datos y las credenciales de Supabase listos en `user-
 2. **Cliente de API y manejo de errores** (completado el 2026-10-18):
    - Base URL hacia `https://localhost:7225` (`VITE_API_URL`), adjuntando `Authorization: Bearer <access_token>` de la sesión de Supabase.
    - Interceptor/helper para leer `application/problem+json` (`ProblemDetails`) y mostrar el campo `detail` en errores `400`, `403`, `409` y `503`.
-3. **Sesión, identidad (`GET /api/me`) y navegación por rol:**
+3. **Sesión, identidad (`GET /api/me`) y navegación por rol** (completado el 2026-10-20):
    - Pantalla de Login con Supabase Auth y ruta `/aceptar-invitacion` para que los usuarios invitados creen su contraseña.
    - Consultar `GET /api/me` al autenticarse:
      - Si responde `403` (`SIN_CUENTA`, `USUARIO_INACTIVO`, `AGENCIA_SUSPENDIDA`), mostrar pantalla de bloqueo con el mensaje de `detail` y opción de cerrar sesión.
