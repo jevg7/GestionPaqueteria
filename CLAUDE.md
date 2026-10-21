@@ -559,7 +559,15 @@ SPA con Vite. `src/main.tsx` monta `QueryClientProvider`, `SesionProvider` y `Ro
   (`lib/validacion.ts`: teléfono con el patrón del backend, correos y textos recortados). Si la API igual
   responde 400 con `errors`, `mensajeDelEnvio` (`lib/formularios.ts`) los pone en sus campos (claves de C# →
   camelCase) y devuelve el mensaje general. Toda escritura va por `useMutation`, así un 401 también cierra la
-  sesión. Fechas en hora de Managua (`lib/formato.ts`).
+  sesión. Instantes en hora de Managua; los días del calendario (`DateOnly`, "yyyy-MM-dd") se muestran sin
+  convertir de zona (`formatearDia`; leídos como medianoche UTC serían el día anterior) y "hoy" es
+  `hoyEnManagua()`, el de `CalculoMonto.FechaEnManagua` (`lib/formato.ts`). Decimales escritos con punto
+  (`decimalPositivo`); los grupos de casillas (roles) con `useController`, y `useWatch` en vez de `watch()`.
+- **Listas:** `useFiltrosDeLista` guarda filtros y página en la dirección con `flushSync`: si la actualización
+  fuera una transición (lo normal en React Router), los campos mostrarían el valor viejo y al escribir rápido se
+  perderían letras. La búsqueda sale al dejar de escribir (`useDiferido`) y la lista anterior se ve mientras
+  llega la nueva (`keepPreviousData`). Un registro por `:id` se carga con `useIdDeLaRuta` + `CargaDeRegistro`
+  (espera, error y "no existe"). Las acciones que cambian el acceso o los datos piden `Confirmacion` en la página.
 - **TanStack Query** (`src/lib/queryClient.ts`): las consultas solo se reintentan si el error es pasajero (estado 0
   o ≥ 500), hasta dos veces; las mutaciones nunca (repetir un pago lo duplicaría).
 - **Build:** las librerías van en archivos aparte (`react`, `supabase`, `vendor`, con
@@ -586,9 +594,20 @@ SPA con Vite. `src/main.tsx` monta `QueryClientProvider`, `SesionProvider` y `Ro
 - **Panel de la plataforma** (`plataforma/`): `/plataforma/agencias` (lista; búsqueda, estado y página viven en
   la dirección), `/nueva` (agencia + invitación de su primer ADMIN; todo o nada en la API), `/:id` (detalle;
   suspender o reactivar con confirmación) y `/:id/editar`. Las claves de caché cuelgan de `claveAgencias`.
+- **Administración de la agencia** (`agencia/`; páginas de cada sección en `paginasDeSeccion` de `router.tsx`,
+  que exige los roles de la sección para todas sus subrutas; las secciones sin páginas dicen "en construcción"):
+  - `/usuarios` (ADMIN): lista con filtros por estado y rol, alta con invitación y roles, detalle (desactivar o
+    activar, reenviar invitación) y edición. El ADMIN no ve cómo desactivarse ni quitarse su rol ADMIN (la API
+    responde 409); si cambia sus roles, se vuelve a pedir `/api/me` para el menú.
+  - `/tarifas` (ADMIN, AGENTE, BODEGA): las de hoy y el historial; `/tarifas/nueva` y anular solo el ADMIN.
+  - `/tipo-de-cambio` (ADMIN, AGENTE): el vigente (404 de `/current` = ninguno) y los últimos; registrar o
+    corregir un día solo el ADMIN.
+  - `/ubicaciones` (ADMIN): ubicaciones y rutas, alta, renombre en la fila y activar/desactivar. Todo cambio
+    invalida también `/api/catalogs`.
 - **Pruebas:** Vitest (`npm test`), junto al código como `*.test.ts`: cliente de la API (simula `fetch` y la
   sesión), secciones contra `Permisos.cs`, mensajes de Supabase, lectura del enlace de invitación, reglas de
-  validación, errores por campo, fechas y esquemas de agencias.
+  validación, errores por campo, fechas y los esquemas de agencias, usuarios, tarifas, tipo de cambio y
+  ubicaciones.
 - Imports con extensión (`./router.tsx`), como la plantilla de Vite; sin alias de rutas. Exportaciones con nombre.
 
 ## Seguridad
@@ -713,8 +732,10 @@ No implementar algo solo porque "podría ser útil".
 - [ ] **Segundo dueño de la plataforma (opcional cuando esté listo):** agregar `Plataforma:Propietarios:1` en `user-secrets` (el primero ya está configurado).
 - [x] **Repositorio Git (2026-10-18):** inicializado en esta carpeta con `.gitignore`, `.gitattributes` y el commit
   inicial en `main` (de ahí sale `develop`). `Claude stuff/` (copias v1 del esquema) quedó archivada fuera del workspace.
-- [ ] **Frontend (`frontend/`):** base, cliente de la API, sesión, navegación por rol y panel de agencias (partes 1
-  a 4 del Paso 2, 2026-10-20); falta la administración de la agencia y las pantallas de cada sección.
+- [ ] **Frontend (`frontend/`):** Fase 1 completa (Paso 2, 2026-10-20): base, cliente de la API, sesión, navegación
+  por rol, panel de agencias y administración de la agencia. Faltan la operación (Paso 3) y la facturación,
+  entregas y auditoría (Paso 4). La administración de la agencia no se ha probado con una cuenta ADMIN real:
+  requiere que llegue la invitación (SMTP, ver abajo).
 - [ ] **Mejoras y decisiones abiertas:**
   - Confirmar con la agencia/contador que la tarifa incluye IVA (`impuestos = 0`).
   - Resolver preguntas abiertas de la sección 9 de `docs/modelo-datos.md` (tarifa marítima por libra o pie³,
@@ -745,7 +766,7 @@ Con el backend, la base de datos y las credenciales de Supabase listos en `user-
    dotnet user-secrets --project src/Paqueteria.Api set "Plataforma:Propietarios:1" "<correo dueño 2>"
    ```
 
-### Paso 2 — Frontend Fase 1: Base, Autenticación, Plataforma y Administración (`frontend/`)
+### Paso 2 — Frontend Fase 1: Base, Autenticación, Plataforma y Administración (`frontend/`) (completado el 2026-10-20)
 
 1. **Inicializar proyecto (`frontend/`)** (completado el 2026-10-18): React + TypeScript + Vite + Tailwind CSS + React Router +
    TanStack Query + React Hook Form + Zod + `@supabase/supabase-js`.
@@ -762,7 +783,7 @@ Con el backend, la base de datos y las credenciales de Supabase listos en `user-
    - Listado, búsqueda y filtro por estado (`GET /api/platform/agencies`).
    - Alta de agencia + invitación de su primer `ADMIN` (`POST /api/platform/agencies`).
    - Edición de datos de la agencia (`PUT /{id}`) y suspensión/reactivación (`POST /{id}/suspend` y `/activate`).
-5. **Administración de la agencia (`ADMIN`):**
+5. **Administración de la agencia (`ADMIN`)** (completado el 2026-10-20):
    - **Usuarios (`/api/users`):** listado, alta con invitación y selección de roles, edición de datos/roles, activar/desactivar y reenviar invitación (`POST /{id}/resend-invite`).
    - **Tarifas (`/api/rates`):** vista de tarifas actuales (`/current`) e historial (`ADMIN`, `AGENTE`, `BODEGA`); registro de nueva tarifa y anulación (`ADMIN`).
    - **Tipo de cambio (`/api/exchange-rates`):** consulta del tipo vigente y últimos 60 registros (`ADMIN`, `AGENTE`); registro/corrección por fecha (`PUT /api/exchange-rates/{yyyy-MM-dd}`, `ADMIN`).
