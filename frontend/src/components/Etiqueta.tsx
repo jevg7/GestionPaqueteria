@@ -5,6 +5,7 @@ const tonos = {
   ambar: 'bg-amber-100 text-amber-900',
   azul: 'bg-blue-100 text-blue-800',
   gris: 'bg-slate-100 text-slate-700',
+  rojo: 'bg-red-100 text-red-800',
 }
 
 export type Tono = keyof typeof tonos

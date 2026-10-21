@@ -17,6 +17,10 @@ describe('decimalPositivo (precios y tipos de cambio)', () => {
     expect(precio.parse('36.6243')).toBe(36.6243)
   })
 
+  it('vacío: un único mensaje, el de obligatorio', () => {
+    expect(precio.safeParse('  ').error?.issues.map((issue) => issue.message)).toEqual(['Falta.'])
+  })
+
   it('rechaza lo vacío, el formato equivocado, más de 4 decimales y el cero', () => {
     expect(mensaje('')).toBe('Falta.')
     expect(mensaje('3,5')).toBe('Formato.')

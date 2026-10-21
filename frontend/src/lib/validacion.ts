@@ -37,7 +37,8 @@ export function decimalPositivo(decimales: number, mensajes: { vacio: string; fo
     .string()
     .trim()
     .min(1, mensajes.vacio)
-    .regex(patron, mensajes.formato)
+    // Vacío ya tiene su mensaje: el formato se revisa solo si se escribió algo.
+    .refine((valor) => valor === '' || patron.test(valor), mensajes.formato)
     .transform(Number)
     .refine((valor) => valor > 0, mensajes.cero)
 }

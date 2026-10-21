@@ -29,6 +29,8 @@ export const seccionesAgencia: readonly Seccion[] = [
 // secciones.test.ts). Se usan con usePermiso (auth/identidad.ts).
 export const permisos = {
   EscribirClientes: ['ADMIN', 'AGENTE'],
+  GestionarPaquetes: ['ADMIN', 'AGENTE'],
+  OperarBodega: ['ADMIN', 'BODEGA'],
   AdministrarFinanzas: ['ADMIN'],
   AdministrarConfiguracion: ['ADMIN'],
 } as const satisfies Record<string, readonly RolAgencia[]>

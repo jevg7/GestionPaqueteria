@@ -28,3 +28,9 @@ export function hoyEnManagua(ahora = new Date()): string {
 export function formatearNumero(valor: number, minimo = 2, maximo = 4): string {
   return new Intl.NumberFormat('es-NI', { minimumFractionDigits: minimo, maximumFractionDigits: maximo }).format(valor)
 }
+
+/** Un peso con sus 2 decimales (peso_lb es NUMERIC(10,2)). */
+export const formatearLibras = (valor: number) => `${formatearNumero(valor, 2, 2)} lb`
+
+/** Un monto en dólares con sus 2 decimales. */
+export const formatearDolares = (valor: number) => `${formatearNumero(valor, 2, 2)} USD`

@@ -1,5 +1,13 @@
 import { describe, expect, it } from 'vitest'
-import { formatearDia, formatearFecha, formatearFechaHora, formatearNumero, hoyEnManagua } from './formato.ts'
+import {
+  formatearDia,
+  formatearDolares,
+  formatearFecha,
+  formatearFechaHora,
+  formatearLibras,
+  formatearNumero,
+  hoyEnManagua,
+} from './formato.ts'
 
 describe('instantes en hora de Managua (UTC−6)', () => {
   it('las 03:00 UTC todavía son el día anterior en Managua', () => {
@@ -30,5 +38,14 @@ describe('formatearNumero', () => {
     expect(formatearNumero(3.5)).toBe('3.50')
     expect(formatearNumero(36.6243)).toBe('36.6243')
     expect(formatearNumero(36.62436)).toBe('36.6244')
+  })
+})
+
+describe('pesos y montos', () => {
+  it('siempre con 2 decimales y su unidad', () => {
+    expect(formatearLibras(4.5)).toBe('4.50 lb')
+    expect(formatearLibras(12)).toBe('12.00 lb')
+    expect(formatearDolares(15.75)).toBe('15.75 USD')
+    expect(formatearDolares(1234.5)).toBe('1,234.50 USD')
   })
 })

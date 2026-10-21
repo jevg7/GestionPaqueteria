@@ -611,15 +611,26 @@ SPA con Vite. `src/main.tsx` monta `QueryClientProvider`, `SesionProvider` y `Ro
   - `/clientes` (consultan ADMIN, AGENTE y BODEGA; `EscribirClientes`: ADMIN y AGENTE): lista con búsqueda (nombre,
     código, correo y teléfono por dígitos) y estado, alta (el código `CLI-` lo pone la BD), ficha y edición, y
     desactivar o activar con confirmación. Sin resultados y con letras en la búsqueda, avisa que distingue tildes
-    (falta `unaccent`): así no se registra dos veces al mismo cliente. `nombreDelCliente` sirve también para el
-    cliente que trae un paquete.
+    (falta `unaccent`; `AVISO_DE_TILDES`): así no se registra dos veces al mismo cliente. Su ficha lleva a "Ver sus
+    paquetes" (`/paquetes?cliente=<id>`) y a "Registrar paquete" con el cliente ya elegido.
+  - `/paquetes` (consultan ADMIN, AGENTE y BODEGA): lista (más recientes primero) con búsqueda por código, tracking o
+    descripción y filtros por estado, método y cliente (este último con su nombre y un botón para quitarlo). Registro
+    (`GestionarPaquetes`: ADMIN y AGENTE) con `SelectorDeCliente` (busca solo clientes activos; ofrece registrar otro
+    paquete para el mismo cliente al terminar), edición por etapas (cliente y método solo en REGISTRADO o
+    RECIBIDO_EN_MIAMI; después se muestran fijos y se envían como estaban) y cancelación con motivo. La ficha muestra la
+    línea de tiempo (`/history`, en orden de registro) y las acciones de cada estado: recibir en Miami y pesar o
+    corregir el peso (`OperarBodega`: ADMIN y BODEGA). El pesaje muestra la tarifa de hoy (`/api/rates/current`) y el
+    monto que resultará (`montoEstimado`, en enteros como `CalculoMonto.Calcular`); sin tarifa no deja pesar. Qué acción
+    se ofrece en cada estado sale de `agencia/paquetes.ts` (`sePuedeCancelar`, `sePuedePesar`…), que
+    `paquetes.test.ts` compara con `TransicionesPaquete.cs`; la API decide lo demás (factura vigente → 409).
 - **Componentes compartidos** (`components/`): además de botones y campos, `AreaDeTexto` (varias líneas; `Dato`
   respeta los saltos de línea al mostrarlas), `EtiquetaActivo` y `campoDeFiltro` (`estilos.ts`) para las búsquedas
   y filtros de las listas.
 - **Pruebas:** Vitest (`npm test`), junto al código como `*.test.ts`: cliente de la API (simula `fetch` y la
   sesión), secciones y operaciones contra `Permisos.cs`, mensajes de Supabase, lectura del enlace de invitación,
   reglas de validación, errores por campo, fechas y los esquemas de agencias, usuarios, tarifas, tipo de cambio,
-  ubicaciones y clientes.
+  ubicaciones, clientes y paquetes; las acciones por estado contra `TransicionesPaquete.cs` y el monto estimado con
+  los casos de `CalculoMontoTests`.
 - Imports con extensión (`./router.tsx`), como la plantilla de Vite; sin alias de rutas. Exportaciones con nombre.
 
 ## Seguridad
@@ -746,7 +757,7 @@ No implementar algo solo porque "podría ser útil".
   inicial en `main` (de ahí sale `develop`). `Claude stuff/` (copias v1 del esquema) quedó archivada fuera del workspace.
 - [ ] **Frontend (`frontend/`):** Fase 1 completa (Paso 2, 2026-10-20): base, cliente de la API, sesión, navegación
   por rol, panel de agencias y administración de la agencia. Paso 3 en curso (rama `feature/frontend-fase-2`):
-  clientes listo (2026-10-21); faltan paquetes y embarques. Después, facturación, entregas y auditoría (Paso 4).
+  clientes y paquetes listos (2026-10-21); faltan los embarques. Después, facturación, entregas y auditoría (Paso 4).
   La administración y la operación de la agencia no se han probado con una cuenta de empleado real: requiere que
   llegue la invitación (SMTP, ver abajo).
 - [ ] **Mejoras y decisiones abiertas:**
@@ -805,7 +816,7 @@ Con el backend, la base de datos y las credenciales de Supabase listos en `user-
 ### Paso 3 — Frontend Fase 2: Operación de Bodega y Atención al Cliente
 
 1. **Clientes (`/api/clients`)** (completado el 2026-10-21): listado paginado con búsqueda (nombre, código, correo, teléfono), creación, edición y activación/desactivación (`ADMIN`, `AGENTE`; lectura `BODEGA`).
-2. **Paquetes (`/api/packages`):**
+2. **Paquetes (`/api/packages`)** (completado el 2026-10-21):
    - Búsqueda y filtros por estado, cliente y método de envío; vista de detalle con línea de tiempo (`GET /{id}/history`).
    - Registro de paquete (`POST /api/packages`), edición por etapas (`PUT /{id}`) y cancelación con motivo (`POST /{id}/cancel`) para `ADMIN` y `AGENTE`.
    - Recepción en Miami (`POST /{id}/receive-miami`) y pesaje en Nicaragua con cálculo automático (`POST /{id}/weigh`) para `ADMIN` y `BODEGA`.

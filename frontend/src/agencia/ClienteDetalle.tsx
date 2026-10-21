@@ -27,6 +27,7 @@ export function ClienteDetalle() {
 
 function Detalle({ cliente, navegacion }: { cliente: Cliente; navegacion: EstadoDeNavegacion }) {
   const puedeModificar = usePermiso('EscribirClientes')
+  const registraPaquetes = usePermiso('GestionarPaquetes')
   const nombre = nombreDelCliente(cliente)
   const queryClient = useQueryClient()
   const [aviso, setAviso] = useState(navegacion?.aviso)
@@ -70,24 +71,30 @@ function Detalle({ cliente, navegacion }: { cliente: Cliente; navegacion: Estado
         <Dato nombre="Última modificación" valor={formatearFechaHora(cliente.actualizadoEn)} />
       </dl>
 
-      {puedeModificar && (
-        <div className="mt-6 flex flex-wrap gap-3">
+      <div className="mt-6 flex flex-wrap gap-3">
+        {registraPaquetes && cliente.activo && (
+          <EnlaceBoton to={`/paquetes/nuevo?cliente=${cliente.id}`}>Registrar paquete</EnlaceBoton>
+        )}
+        <EnlaceBoton to={`/paquetes?cliente=${cliente.id}`} variante="secundario">
+          Ver sus paquetes
+        </EnlaceBoton>
+        {puedeModificar && (
           <EnlaceBoton to="editar" state={{ lista: navegacion?.lista }} variante="secundario">
             Editar datos
           </EnlaceBoton>
-          {!confirmando && (
-            <Boton
-              variante={desactivar ? 'peligro' : 'primario'}
-              onClick={() => {
-                setAviso(undefined)
-                setConfirmando(true)
-              }}
-            >
-              {desactivar ? 'Desactivar cliente' : 'Activar cliente'}
-            </Boton>
-          )}
-        </div>
-      )}
+        )}
+        {puedeModificar && !confirmando && (
+          <Boton
+            variante={desactivar ? 'peligro' : 'primario'}
+            onClick={() => {
+              setAviso(undefined)
+              setConfirmando(true)
+            }}
+          >
+            {desactivar ? 'Desactivar cliente' : 'Activar cliente'}
+          </Boton>
+        )}
+      </div>
       {!cliente.activo && (
         <p className="mt-3 text-xs text-slate-500">
           Un cliente inactivo no recibe paquetes nuevos; los que tiene en curso siguen su flujo.
