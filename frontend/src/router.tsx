@@ -1,4 +1,8 @@
 import { createBrowserRouter, Navigate, Outlet, type RouteObject } from 'react-router'
+import { ClienteDetalle } from './agencia/ClienteDetalle.tsx'
+import { ClienteEditar } from './agencia/ClienteEditar.tsx'
+import { ClienteNuevo } from './agencia/ClienteNuevo.tsx'
+import { ClientesLista } from './agencia/ClientesLista.tsx'
 import { PanelAgencia } from './agencia/PanelAgencia.tsx'
 import { TarifaNueva } from './agencia/TarifaNueva.tsx'
 import { Tarifas } from './agencia/Tarifas.tsx'
@@ -13,7 +17,7 @@ import { AceptarInvitacion } from './auth/AceptarInvitacion.tsx'
 import { IniciarSesion } from './auth/IniciarSesion.tsx'
 import { Inicio } from './auth/Inicio.tsx'
 import { RequiereRoles } from './auth/RequiereRoles.tsx'
-import { seccionesAgencia } from './auth/secciones.ts'
+import { permisos, seccionesAgencia } from './auth/secciones.ts'
 import { llevaALaContrasena } from './lib/enlaceDeAuth.ts'
 import { enlaceDeAuth } from './lib/supabase.ts'
 import { EnConstruccion } from './pages/EnConstruccion.tsx'
@@ -28,6 +32,27 @@ const PAGINA_DE_CONTRASENA = '/aceptar-invitacion'
 
 /** Páginas de cada sección de la agencia (por su ruta en auth/secciones.ts). */
 const paginasDeSeccion: Partial<Record<string, RouteObject[]>> = {
+  // Consultan ADMIN, AGENTE y BODEGA; registran y editan ADMIN y AGENTE.
+  clientes: [
+    { index: true, Component: ClientesLista },
+    {
+      path: 'nuevo',
+      element: (
+        <RequiereRoles roles={permisos.EscribirClientes}>
+          <ClienteNuevo />
+        </RequiereRoles>
+      ),
+    },
+    { path: ':id', Component: ClienteDetalle },
+    {
+      path: ':id/editar',
+      element: (
+        <RequiereRoles roles={permisos.EscribirClientes}>
+          <ClienteEditar />
+        </RequiereRoles>
+      ),
+    },
+  ],
   usuarios: [
     { index: true, Component: UsuariosLista },
     { path: 'nuevo', Component: UsuarioNuevo },
@@ -43,7 +68,7 @@ const paginasDeSeccion: Partial<Record<string, RouteObject[]>> = {
     {
       path: 'nueva',
       element: (
-        <RequiereRoles roles={['ADMIN']}>
+        <RequiereRoles roles={permisos.AdministrarConfiguracion}>
           <TarifaNueva />
         </RequiereRoles>
       ),

@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
 import { createContext, useContext } from 'react'
 import { api } from '../lib/api.ts'
+import { permisos, tieneAlgunRol, type Permiso } from './secciones.ts'
 import { useSesion } from './sesion.ts'
 
 export type RolAgencia = 'ADMIN' | 'AGENTE' | 'BODEGA' | 'REPARTIDOR'
@@ -48,6 +49,11 @@ export function useIdentidadActual(): Identidad {
   const identidad = useContext(IdentidadContext)
   if (!identidad) throw new Error('useIdentidadActual solo funciona dentro de <AccesoProtegido>.')
   return identidad
+}
+
+/** Si el empleado en sesión puede hacer la operación (los roles de cada permiso están en auth/secciones.ts). */
+export function usePermiso(permiso: Permiso): boolean {
+  return tieneAlgunRol(useIdentidadActual().roles, permisos[permiso])
 }
 
 export function nombreCompleto(identidad: Identidad): string {

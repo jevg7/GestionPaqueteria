@@ -4,11 +4,13 @@ import { nombresDeRol, useIdentidadActual, type RolAgencia } from '../auth/ident
 import { Aviso } from '../components/Aviso.tsx'
 import { Boton } from '../components/Boton.tsx'
 import { EnlaceBoton } from '../components/EnlaceBoton.tsx'
+import { EtiquetaActivo } from '../components/Etiqueta.tsx'
 import { Paginacion } from '../components/Paginacion.tsx'
+import { campoDeFiltro } from '../components/estilos.ts'
 import { mensajeDeError } from '../lib/errores.ts'
 import { useDiferido } from '../lib/useDiferido.ts'
 import { useFiltrosDeLista } from '../lib/useFiltrosDeLista.ts'
-import { EtiquetaActivo, EtiquetasDeRoles } from './EtiquetasDeUsuario.tsx'
+import { EtiquetasDeRoles } from './EtiquetasDeUsuario.tsx'
 import { nombreDelUsuario, opcionesListaUsuarios, TAMANO_DE_PAGINA, type FiltrosUsuarios } from './usuarios.ts'
 
 const estados: { valor: FiltrosUsuarios['activo']; texto: string }[] = [
@@ -17,9 +19,6 @@ const estados: { valor: FiltrosUsuarios['activo']; texto: string }[] = [
   { valor: 'false', texto: 'Inactivos' },
 ]
 const roles: RolAgencia[] = ['ADMIN', 'AGENTE', 'BODEGA', 'REPARTIDOR']
-
-const campo =
-  'rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm shadow-xs focus:border-blue-700 focus:outline-2 focus:outline-blue-700/20'
 
 export function UsuariosLista() {
   const yo = useIdentidadActual()
@@ -46,16 +45,16 @@ export function UsuariosLista() {
           placeholder="Buscar por nombre o correo"
           aria-label="Buscar usuarios"
           maxLength={100}
-          className={`${campo} w-full sm:max-w-sm`}
+          className={`${campoDeFiltro} w-full sm:max-w-sm`}
         />
-        <select value={activo} onChange={(evento) => cambiar('activo', evento.target.value)} aria-label="Estado" className={campo}>
+        <select value={activo} onChange={(evento) => cambiar('activo', evento.target.value)} aria-label="Estado" className={campoDeFiltro}>
           {estados.map((opcion) => (
             <option key={opcion.valor} value={opcion.valor}>
               {opcion.texto}
             </option>
           ))}
         </select>
-        <select value={rol} onChange={(evento) => cambiar('rol', evento.target.value)} aria-label="Rol" className={campo}>
+        <select value={rol} onChange={(evento) => cambiar('rol', evento.target.value)} aria-label="Rol" className={campoDeFiltro}>
           <option value="">Todos los roles</option>
           {roles.map((codigo) => (
             <option key={codigo} value={codigo}>

@@ -7,10 +7,11 @@ import { Boton } from '../components/Boton.tsx'
 import { Confirmacion } from '../components/Confirmacion.tsx'
 import { Dato } from '../components/Dato.tsx'
 import { EnlaceBoton } from '../components/EnlaceBoton.tsx'
+import { EtiquetaActivo } from '../components/Etiqueta.tsx'
 import { mensajeDeError } from '../lib/errores.ts'
 import { formatearFechaHora } from '../lib/formato.ts'
 import { ConUsuario } from './ConUsuario.tsx'
-import { EtiquetaActivo, EtiquetasDeRoles } from './EtiquetasDeUsuario.tsx'
+import { EtiquetasDeRoles } from './EtiquetasDeUsuario.tsx'
 import { activarUsuario, claveUsuarios, desactivarUsuario, nombreDelUsuario, reenviarInvitacion, type Usuario } from './usuarios.ts'
 
 /** Lo que trae la navegación: un aviso para mostrar y los filtros de la lista de la que se vino. */

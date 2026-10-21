@@ -24,6 +24,17 @@ export const seccionesAgencia: readonly Seccion[] = [
   { ruta: 'auditoria', titulo: 'Auditoría', permiso: 'VerAuditoria', roles: ['ADMIN'] },
 ]
 
+// Roles de las operaciones que se ofrecen u ocultan dentro de una sección (botones y formularios), por el nombre
+// de su permiso en Permisos.cs. Como el menú, solo ocultan lo que el usuario no podría usar (lo prueba
+// secciones.test.ts). Se usan con usePermiso (auth/identidad.ts).
+export const permisos = {
+  EscribirClientes: ['ADMIN', 'AGENTE'],
+  AdministrarFinanzas: ['ADMIN'],
+  AdministrarConfiguracion: ['ADMIN'],
+} as const satisfies Record<string, readonly RolAgencia[]>
+
+export type Permiso = keyof typeof permisos
+
 export function tieneAlgunRol(roles: readonly Rol[], permitidos: readonly Rol[]): boolean {
   return permitidos.some((rol) => roles.includes(rol))
 }

@@ -2,8 +2,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useMemo, useState } from 'react'
 import { useForm, useWatch } from 'react-hook-form'
-import { useIdentidadActual } from '../auth/identidad.ts'
-import { tieneAlgunRol } from '../auth/secciones.ts'
+import { usePermiso } from '../auth/identidad.ts'
 import { Aviso } from '../components/Aviso.tsx'
 import { Boton } from '../components/Boton.tsx'
 import { Campo } from '../components/Campo.tsx'
@@ -26,7 +25,7 @@ import {
 
 /** Tipo de cambio (córdobas por dólar): consultan ADMIN y AGENTE; registra y corrige solo el ADMIN. */
 export function TipoDeCambio() {
-  const esAdmin = tieneAlgunRol(useIdentidadActual().roles, ['ADMIN'])
+  const puedeModificar = usePermiso('AdministrarFinanzas')
   // "Hoy" es el de Managua, como en el backend.
   const hoy = useMemo(() => hoyEnManagua(), [])
   const vigente = useQuery(opcionesTipoDeCambioVigente)
@@ -62,7 +61,7 @@ export function TipoDeCambio() {
         )}
       </div>
 
-      {esAdmin && <Formulario hoy={hoy} registrados={ultimos.data ?? []} />}
+      {puedeModificar && <Formulario hoy={hoy} registrados={ultimos.data ?? []} />}
 
       <h2 className="mt-8 text-sm font-semibold uppercase tracking-wide text-slate-500">Últimos registros</h2>
       <div className="mt-2">

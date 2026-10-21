@@ -47,11 +47,13 @@ export function diaObligatorio(mensajeVacio: string) {
   return z.string().regex(/^\d{4}-\d{2}-\d{2}$/, mensajeVacio)
 }
 
-export const telefonoOpcional = z
-  .string()
-  .trim()
-  .max(30, 'El teléfono admite hasta 30 caracteres.')
-  .refine(
-    (valor) => valor === '' || PATRON_TELEFONO.test(valor),
-    'El teléfono solo admite dígitos, espacios, guiones, paréntesis y un + inicial.',
-  )
+const telefonoValido = (valor: string) => valor === '' || PATRON_TELEFONO.test(valor)
+const TELEFONO_LARGO = 'El teléfono admite hasta 30 caracteres.'
+const TELEFONO_FORMATO = 'El teléfono solo admite dígitos, espacios, guiones, paréntesis y un + inicial.'
+
+export const telefonoOpcional = z.string().trim().max(30, TELEFONO_LARGO).refine(telefonoValido, TELEFONO_FORMATO)
+
+/** Teléfono que no puede quedar vacío (el del cliente). */
+export function telefonoObligatorio(mensajeVacio: string) {
+  return z.string().trim().min(1, mensajeVacio).max(30, TELEFONO_LARGO).refine(telefonoValido, TELEFONO_FORMATO)
+}

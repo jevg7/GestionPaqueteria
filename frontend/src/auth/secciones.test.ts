@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import permisosDelBackend from '../../../backend/src/Paqueteria.Api/Auth/Permisos.cs?raw'
 import type { Identidad, Rol } from './identidad.ts'
-import { destinoInicial, seccionesAgencia, seccionesVisibles } from './secciones.ts'
+import { destinoInicial, permisos, seccionesAgencia, seccionesVisibles } from './secciones.ts'
 
 const titulos = (roles: Rol[]) => seccionesVisibles(roles).map((seccion) => seccion.titulo)
 
@@ -45,8 +45,8 @@ describe('destinoInicial', () => {
   })
 })
 
-// Si cambia un permiso en el backend, esta prueba avisa que hay que actualizar el menú.
-describe('cada sección tiene los roles de su permiso en Auth/Permisos.cs', () => {
+// Si cambia un permiso en el backend, estas pruebas avisan que hay que actualizar el menú o los botones.
+describe('las secciones y las operaciones tienen los roles de su permiso en Auth/Permisos.cs', () => {
   const rolesPorPermiso = new Map(
     [...permisosDelBackend.matchAll(/const string (\w+) = ([^;]+);/g)].map(([, nombre, valor]) => [
       nombre,
@@ -55,8 +55,14 @@ describe('cada sección tiene los roles de su permiso en Auth/Permisos.cs', () =
   )
 
   for (const seccion of seccionesAgencia) {
-    it(`${seccion.titulo} (${seccion.permiso})`, () => {
+    it(`sección ${seccion.titulo} (${seccion.permiso})`, () => {
       expect(rolesPorPermiso.get(seccion.permiso)).toEqual([...seccion.roles].sort())
+    })
+  }
+
+  for (const [permiso, roles] of Object.entries(permisos)) {
+    it(`operación ${permiso}`, () => {
+      expect(rolesPorPermiso.get(permiso)).toEqual([...roles].sort())
     })
   }
 })

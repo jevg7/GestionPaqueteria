@@ -9,3 +9,7 @@ export const variantesBoton = {
 }
 
 export type VarianteBoton = keyof typeof variantesBoton
+
+/** Búsquedas y filtros de las listas (sin etiqueta visible: llevan aria-label). */
+export const campoDeFiltro =
+  'rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm shadow-xs focus:border-blue-700 focus:outline-2 focus:outline-blue-700/20'

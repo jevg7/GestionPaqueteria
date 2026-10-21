@@ -4,6 +4,7 @@ import { Aviso } from '../components/Aviso.tsx'
 import { Boton } from '../components/Boton.tsx'
 import { EnlaceBoton } from '../components/EnlaceBoton.tsx'
 import { Paginacion } from '../components/Paginacion.tsx'
+import { campoDeFiltro } from '../components/estilos.ts'
 import { mensajeDeError } from '../lib/api.ts'
 import { useDiferido } from '../lib/useDiferido.ts'
 import { useFiltrosDeLista } from '../lib/useFiltrosDeLista.ts'
@@ -15,9 +16,6 @@ const estados: { valor: EstadoAgencia | ''; texto: string }[] = [
   { valor: 'ACTIVA', texto: 'Activas' },
   { valor: 'SUSPENDIDA', texto: 'Suspendidas' },
 ]
-
-const campo =
-  'rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm shadow-xs focus:border-blue-700 focus:outline-2 focus:outline-blue-700/20'
 
 export function AgenciasLista() {
   const { leer, pagina, cambiar, cambiarPagina } = useFiltrosDeLista()
@@ -43,9 +41,9 @@ export function AgenciasLista() {
           placeholder="Buscar por nombre, RUC o correo"
           aria-label="Buscar agencias"
           maxLength={100}
-          className={`${campo} w-full sm:max-w-sm`}
+          className={`${campoDeFiltro} w-full sm:max-w-sm`}
         />
-        <select value={estado} onChange={(evento) => cambiar('estado', evento.target.value)} aria-label="Estado" className={campo}>
+        <select value={estado} onChange={(evento) => cambiar('estado', evento.target.value)} aria-label="Estado" className={campoDeFiltro}>
           {estados.map((opcion) => (
             <option key={opcion.valor} value={opcion.valor}>
               {opcion.texto}

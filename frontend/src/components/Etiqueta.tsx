@@ -13,3 +13,8 @@ export type Tono = keyof typeof tonos
 export function Etiqueta({ tono, children }: { tono: Tono; children: ReactNode }) {
   return <span className={`inline-block rounded-full px-2.5 py-0.5 text-xs font-medium ${tonos[tono]}`}>{children}</span>
 }
+
+/** "Activo" o "Inactivo" (usuarios y clientes: nada se borra, se desactiva). */
+export function EtiquetaActivo({ activo }: { activo: boolean }) {
+  return activo ? <Etiqueta tono="verde">Activo</Etiqueta> : <Etiqueta tono="gris">Inactivo</Etiqueta>
+}

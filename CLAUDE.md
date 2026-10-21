@@ -582,7 +582,10 @@ SPA con Vite. `src/main.tsx` monta `QueryClientProvider`, `SesionProvider` y `Ro
 - **Navegación por rol:** `/` lleva al dueño a `/plataforma` y al empleado a la primera sección de sus roles.
   `auth/secciones.ts` define cada sección de la agencia con su permiso de `Auth/Permisos.cs` y sus roles;
   `secciones.test.ts` las compara con ese archivo, así que cambiar un permiso en el backend obliga a actualizar el
-  menú. `RequiereRoles` muestra "Sin acceso" en una sección no permitida. `PanelAgencia` precarga `/api/catalogs`
+  menú. Lo mismo vale para las operaciones dentro de una sección: `permisos` (mismo archivo, por el nombre del
+  permiso en `Permisos.cs`) y `usePermiso('EscribirClientes')` (`auth/identidad.ts`) deciden qué botones se ven;
+  una subruta de escritura se protege con `<RequiereRoles roles={permisos.X}>`. Nunca roles escritos a mano.
+  `RequiereRoles` muestra "Sin acceso" en una sección no permitida. `PanelAgencia` precarga `/api/catalogs`
   (`agencia/catalogos.ts`).
 - **Invitación y recuperación** (`/aceptar-invitacion`, `Supabase:InviteRedirectUrl`): supabase-js toma la
   sesión del enlace (flujo implícito) y el usuario elige su contraseña (≥ 8 caracteres; Supabase puede exigir
@@ -604,10 +607,19 @@ SPA con Vite. `src/main.tsx` monta `QueryClientProvider`, `SesionProvider` y `Ro
     corregir un día solo el ADMIN.
   - `/ubicaciones` (ADMIN): ubicaciones y rutas, alta, renombre en la fila y activar/desactivar. Todo cambio
     invalida también `/api/catalogs`.
+- **Operación de la agencia** (`agencia/`, Paso 3):
+  - `/clientes` (consultan ADMIN, AGENTE y BODEGA; `EscribirClientes`: ADMIN y AGENTE): lista con búsqueda (nombre,
+    código, correo y teléfono por dígitos) y estado, alta (el código `CLI-` lo pone la BD), ficha y edición, y
+    desactivar o activar con confirmación. Sin resultados y con letras en la búsqueda, avisa que distingue tildes
+    (falta `unaccent`): así no se registra dos veces al mismo cliente. `nombreDelCliente` sirve también para el
+    cliente que trae un paquete.
+- **Componentes compartidos** (`components/`): además de botones y campos, `AreaDeTexto` (varias líneas; `Dato`
+  respeta los saltos de línea al mostrarlas), `EtiquetaActivo` y `campoDeFiltro` (`estilos.ts`) para las búsquedas
+  y filtros de las listas.
 - **Pruebas:** Vitest (`npm test`), junto al código como `*.test.ts`: cliente de la API (simula `fetch` y la
-  sesión), secciones contra `Permisos.cs`, mensajes de Supabase, lectura del enlace de invitación, reglas de
-  validación, errores por campo, fechas y los esquemas de agencias, usuarios, tarifas, tipo de cambio y
-  ubicaciones.
+  sesión), secciones y operaciones contra `Permisos.cs`, mensajes de Supabase, lectura del enlace de invitación,
+  reglas de validación, errores por campo, fechas y los esquemas de agencias, usuarios, tarifas, tipo de cambio,
+  ubicaciones y clientes.
 - Imports con extensión (`./router.tsx`), como la plantilla de Vite; sin alias de rutas. Exportaciones con nombre.
 
 ## Seguridad
@@ -733,9 +745,10 @@ No implementar algo solo porque "podría ser útil".
 - [x] **Repositorio Git (2026-10-18):** inicializado en esta carpeta con `.gitignore`, `.gitattributes` y el commit
   inicial en `main` (de ahí sale `develop`). `Claude stuff/` (copias v1 del esquema) quedó archivada fuera del workspace.
 - [ ] **Frontend (`frontend/`):** Fase 1 completa (Paso 2, 2026-10-20): base, cliente de la API, sesión, navegación
-  por rol, panel de agencias y administración de la agencia. Faltan la operación (Paso 3) y la facturación,
-  entregas y auditoría (Paso 4). La administración de la agencia no se ha probado con una cuenta ADMIN real:
-  requiere que llegue la invitación (SMTP, ver abajo).
+  por rol, panel de agencias y administración de la agencia. Paso 3 en curso (rama `feature/frontend-fase-2`):
+  clientes listo (2026-10-21); faltan paquetes y embarques. Después, facturación, entregas y auditoría (Paso 4).
+  La administración y la operación de la agencia no se han probado con una cuenta de empleado real: requiere que
+  llegue la invitación (SMTP, ver abajo).
 - [ ] **Mejoras y decisiones abiertas:**
   - Confirmar con la agencia/contador que la tarifa incluye IVA (`impuestos = 0`).
   - Resolver preguntas abiertas de la sección 9 de `docs/modelo-datos.md` (tarifa marítima por libra o pie³,
@@ -791,7 +804,7 @@ Con el backend, la base de datos y las credenciales de Supabase listos en `user-
 
 ### Paso 3 — Frontend Fase 2: Operación de Bodega y Atención al Cliente
 
-1. **Clientes (`/api/clients`):** listado paginado con búsqueda (nombre, código, correo, teléfono), creación, edición y activación/desactivación (`ADMIN`, `AGENTE`; lectura `BODEGA`).
+1. **Clientes (`/api/clients`)** (completado el 2026-10-21): listado paginado con búsqueda (nombre, código, correo, teléfono), creación, edición y activación/desactivación (`ADMIN`, `AGENTE`; lectura `BODEGA`).
 2. **Paquetes (`/api/packages`):**
    - Búsqueda y filtros por estado, cliente y método de envío; vista de detalle con línea de tiempo (`GET /{id}/history`).
    - Registro de paquete (`POST /api/packages`), edición por etapas (`PUT /{id}`) y cancelación con motivo (`POST /{id}/cancel`) para `ADMIN` y `AGENTE`.
