@@ -1,13 +1,13 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
 import { useLocation } from 'react-router'
-import { useIdentidadActual } from '../auth/identidad.ts'
-import { tieneAlgunRol } from '../auth/secciones.ts'
+import { usePermiso } from '../auth/identidad.ts'
 import { Aviso } from '../components/Aviso.tsx'
 import { Boton } from '../components/Boton.tsx'
 import { Confirmacion } from '../components/Confirmacion.tsx'
 import { EnlaceBoton } from '../components/EnlaceBoton.tsx'
 import { Etiqueta, type Tono } from '../components/Etiqueta.tsx'
+import { campoDeFiltro } from '../components/estilos.ts'
 import { mensajeDeError } from '../lib/errores.ts'
 import { useFiltrosDeLista } from '../lib/useFiltrosDeLista.ts'
 import { opcionesCatalogos } from './catalogos.ts'
@@ -30,12 +30,9 @@ const estados: Record<EstadoTarifa, { texto: string; tono: Tono }> = {
   ANULADA: { texto: 'Anulada', tono: 'ambar' },
 }
 
-const campo =
-  'rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm shadow-xs focus:border-blue-700 focus:outline-2 focus:outline-blue-700/20'
-
 /** Tarifas de la agencia: las consultan ADMIN, AGENTE y BODEGA; registra y anula solo el ADMIN. */
 export function Tarifas() {
-  const esAdmin = tieneAlgunRol(useIdentidadActual().roles, ['ADMIN'])
+  const puedeModificar = usePermiso('AdministrarConfiguracion')
   const queryClient = useQueryClient()
   const navegacion = useLocation().state as { aviso?: string } | null
   const [aviso, setAviso] = useState(navegacion?.aviso)
@@ -62,7 +59,7 @@ export function Tarifas() {
     <section className="max-w-4xl">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-xl font-semibold">Tarifas</h1>
-        {esAdmin && <EnlaceBoton to="nueva">Registrar tarifa</EnlaceBoton>}
+        {puedeModificar && <EnlaceBoton to="nueva">Registrar tarifa</EnlaceBoton>}
       </div>
       {aviso && (
         <div className="mt-4">
@@ -100,7 +97,7 @@ export function Tarifas() {
       <div className="mt-8 flex flex-wrap items-center justify-between gap-3">
         <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-500">Historial</h2>
         <div className="flex flex-wrap items-center gap-3">
-          <select value={metodo} onChange={(evento) => cambiar('metodo', evento.target.value)} aria-label="Método de envío" className={campo}>
+          <select value={metodo} onChange={(evento) => cambiar('metodo', evento.target.value)} aria-label="Método de envío" className={campoDeFiltro}>
             <option value="">Todos los métodos</option>
             {catalogos.data?.metodosEnvio.map((m) => (
               <option key={m.codigo} value={m.codigo}>
@@ -147,7 +144,7 @@ export function Tarifas() {
                   </div>
                   <div className="flex items-center gap-3">
                     <Etiqueta tono={estados[tarifa.estado].tono}>{estados[tarifa.estado].texto}</Etiqueta>
-                    {esAdmin && sePuedeAnular(tarifa) && anulando !== tarifa.id && (
+                    {puedeModificar && sePuedeAnular(tarifa) && anulando !== tarifa.id && (
                       <Boton
                         variante="secundario"
                         onClick={() => {

@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest'
-import { correoOpcional, decimalPositivo, diaObligatorio, telefonoOpcional, textoObligatorio } from './validacion.ts'
+import {
+  correoOpcional,
+  decimalPositivo,
+  diaObligatorio,
+  telefonoObligatorio,
+  telefonoOpcional,
+  textoObligatorio,
+} from './validacion.ts'
 
 describe('decimalPositivo (precios y tipos de cambio)', () => {
   const precio = decimalPositivo(4, { vacio: 'Falta.', formato: 'Formato.', cero: 'Cero.' })
@@ -8,6 +15,10 @@ describe('decimalPositivo (precios y tipos de cambio)', () => {
   it('convierte el texto en número', () => {
     expect(precio.parse(' 3.5 ')).toBe(3.5)
     expect(precio.parse('36.6243')).toBe(36.6243)
+  })
+
+  it('vacío: un único mensaje, el de obligatorio', () => {
+    expect(precio.safeParse('  ').error?.issues.map((issue) => issue.message)).toEqual(['Falta.'])
   })
 
   it('rechaza lo vacío, el formato equivocado, más de 4 decimales y el cero', () => {
@@ -38,6 +49,21 @@ describe('telefonoOpcional (el patrón de los DTOs del backend)', () => {
 
   it('admite hasta 30 caracteres', () => {
     expect(telefonoOpcional.safeParse('1'.repeat(31)).error?.issues[0].message).toBe('El teléfono admite hasta 30 caracteres.')
+  })
+})
+
+describe('telefonoObligatorio (el del cliente)', () => {
+  const telefono = telefonoObligatorio('Falta el teléfono.')
+
+  it('vacío o de solo espacios: un único mensaje, el de obligatorio', () => {
+    expect(telefono.safeParse('').error?.issues.map((issue) => issue.message)).toEqual(['Falta el teléfono.'])
+    expect(telefono.safeParse('   ').error?.issues.map((issue) => issue.message)).toEqual(['Falta el teléfono.'])
+  })
+
+  it('con el mismo patrón y largo que el opcional', () => {
+    expect(telefono.parse(' +505 8888-0002 ')).toBe('+505 8888-0002')
+    expect(telefono.safeParse('abc').error?.issues[0].message).toBe(MENSAJE_TELEFONO)
+    expect(telefono.safeParse('1'.repeat(31)).error?.issues[0].message).toBe('El teléfono admite hasta 30 caracteres.')
   })
 })
 

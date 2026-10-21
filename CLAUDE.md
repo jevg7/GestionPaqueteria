@@ -39,7 +39,7 @@ Si un cambio contradice el modelo, detente y pregunta; no lo "arregles" en silen
 ```text
 paqueteria/
 ├── backend/        # ASP.NET Core Web API + tests (completo: flujo operativo + administración SaaS)
-├── frontend/       # React + TypeScript + Vite (base creada; faltan las pantallas)
+├── frontend/       # React + TypeScript + Vite (administración y operación; faltan facturación, entregas y auditoría)
 ├── database/       # schema.sql (v2 congelado), seed.sql, tests/
 └── docs/
 ```
@@ -561,7 +561,9 @@ SPA con Vite. `src/main.tsx` monta `QueryClientProvider`, `SesionProvider` y `Ro
   camelCase) y devuelve el mensaje general. Toda escritura va por `useMutation`, así un 401 también cierra la
   sesión. Instantes en hora de Managua; los días del calendario (`DateOnly`, "yyyy-MM-dd") se muestran sin
   convertir de zona (`formatearDia`; leídos como medianoche UTC serían el día anterior) y "hoy" es
-  `hoyEnManagua()`, el de `CalculoMonto.FechaEnManagua` (`lib/formato.ts`). Decimales escritos con punto
+  `hoyEnManagua()`, el de `CalculoMonto.FechaEnManagua` (`lib/formato.ts`). Una fecha y hora (salida, llegada) se
+  escribe en hora de Managua con `<input type="datetime-local">` y viaja con su desfase (`instanteEnManagua`:
+  "2026-10-20T08:30:00-06:00"), sin depender de la zona del equipo. Decimales escritos con punto
   (`decimalPositivo`); los grupos de casillas (roles) con `useController`, y `useWatch` en vez de `watch()`.
 - **Listas:** `useFiltrosDeLista` guarda filtros y página en la dirección con `flushSync`: si la actualización
   fuera una transición (lo normal en React Router), los campos mostrarían el valor viejo y al escribir rápido se
@@ -582,7 +584,10 @@ SPA con Vite. `src/main.tsx` monta `QueryClientProvider`, `SesionProvider` y `Ro
 - **Navegación por rol:** `/` lleva al dueño a `/plataforma` y al empleado a la primera sección de sus roles.
   `auth/secciones.ts` define cada sección de la agencia con su permiso de `Auth/Permisos.cs` y sus roles;
   `secciones.test.ts` las compara con ese archivo, así que cambiar un permiso en el backend obliga a actualizar el
-  menú. `RequiereRoles` muestra "Sin acceso" en una sección no permitida. `PanelAgencia` precarga `/api/catalogs`
+  menú. Lo mismo vale para las operaciones dentro de una sección: `permisos` (mismo archivo, por el nombre del
+  permiso en `Permisos.cs`) y `usePermiso('EscribirClientes')` (`auth/identidad.ts`) deciden qué botones se ven;
+  una subruta de escritura se protege con `<RequiereRoles roles={permisos.X}>`. Nunca roles escritos a mano.
+  `RequiereRoles` muestra "Sin acceso" en una sección no permitida. `PanelAgencia` precarga `/api/catalogs`
   (`agencia/catalogos.ts`).
 - **Invitación y recuperación** (`/aceptar-invitacion`, `Supabase:InviteRedirectUrl`): supabase-js toma la
   sesión del enlace (flujo implícito) y el usuario elige su contraseña (≥ 8 caracteres; Supabase puede exigir
@@ -604,10 +609,40 @@ SPA con Vite. `src/main.tsx` monta `QueryClientProvider`, `SesionProvider` y `Ro
     corregir un día solo el ADMIN.
   - `/ubicaciones` (ADMIN): ubicaciones y rutas, alta, renombre en la fila y activar/desactivar. Todo cambio
     invalida también `/api/catalogs`.
+- **Operación de la agencia** (`agencia/`, Paso 3):
+  - `/clientes` (consultan ADMIN, AGENTE y BODEGA; `EscribirClientes`: ADMIN y AGENTE): lista con búsqueda (nombre,
+    código, correo y teléfono por dígitos) y estado, alta (el código `CLI-` lo pone la BD), ficha y edición, y
+    desactivar o activar con confirmación. Sin resultados y con letras en la búsqueda, avisa que distingue tildes
+    (falta `unaccent`; `AVISO_DE_TILDES`): así no se registra dos veces al mismo cliente. Su ficha lleva a "Ver sus
+    paquetes" (`/paquetes?cliente=<id>`) y a "Registrar paquete" con el cliente ya elegido.
+  - `/paquetes` (consultan ADMIN, AGENTE y BODEGA): lista (más recientes primero) con búsqueda por código, tracking o
+    descripción y filtros por estado, método y cliente (este último con su nombre y un botón para quitarlo). Registro
+    (`GestionarPaquetes`: ADMIN y AGENTE) con `SelectorDeCliente` (busca solo clientes activos; ofrece registrar otro
+    paquete para el mismo cliente al terminar), edición por etapas (cliente y método solo en REGISTRADO o
+    RECIBIDO_EN_MIAMI; después se muestran fijos y se envían como estaban) y cancelación con motivo. La ficha muestra la
+    línea de tiempo (`/history`, en orden de registro) y las acciones de cada estado: recibir en Miami y pesar o
+    corregir el peso (`OperarBodega`: ADMIN y BODEGA). El pesaje muestra la tarifa de hoy (`/api/rates/current`) y el
+    monto que resultará (`montoEstimado`, en enteros como `CalculoMonto.Calcular`); sin tarifa no deja pesar. Qué acción
+    se ofrece en cada estado sale de `agencia/paquetes.ts` (`sePuedeCancelar`, `sePuedePesar`…), que
+    `paquetes.test.ts` compara con `TransicionesPaquete.cs`; la API decide lo demás (factura vigente → 409). Su embarque
+    enlaza a `/embarques?buscar=<código>` (la API da el código, no el id).
+  - `/embarques` (consultan ADMIN, AGENTE y BODEGA; `OperarBodega`: ADMIN y BODEGA): lista (más recientes primero) con
+    búsqueda por código y filtros por estado y método; alta (método y ruta de `/api/catalogs`; con una sola ruta activa
+    viene elegida). La ficha muestra sus paquetes y las acciones de su estado (`estadosQuePermiten` + `admite` en
+    `agencia/embarques.ts`, que `embarques.test.ts` compara con `ExigirEstado` de `EmbarquesService.cs`): asignar en
+    lote los RECIBIDO_EN_MIAMI de su método (la selección se conserva entre búsquedas; todo o nada en la API), quitar
+    con confirmación, cerrar (con paquetes), registrar salida y llegada (fecha opcional, nunca futura y la llegada no
+    antes de la salida), editar llegada estimada y observaciones, y cancelar (sin paquetes). Lo que mueve paquetes
+    invalida también la caché de paquetes; cancelar un paquete que estaba en un embarque invalida la de embarques.
+- **Componentes compartidos** (`components/`): además de botones y campos, `AreaDeTexto` (varias líneas; `Dato`
+  respeta los saltos de línea al mostrarlas), `EtiquetaActivo` y `campoDeFiltro` (`estilos.ts`) para las búsquedas
+  y filtros de las listas.
 - **Pruebas:** Vitest (`npm test`), junto al código como `*.test.ts`: cliente de la API (simula `fetch` y la
-  sesión), secciones contra `Permisos.cs`, mensajes de Supabase, lectura del enlace de invitación, reglas de
-  validación, errores por campo, fechas y los esquemas de agencias, usuarios, tarifas, tipo de cambio y
-  ubicaciones.
+  sesión), secciones y operaciones contra `Permisos.cs`, mensajes de Supabase, lectura del enlace de invitación,
+  reglas de validación, errores por campo, fechas y los esquemas de agencias, usuarios, tarifas, tipo de cambio,
+  ubicaciones, clientes, paquetes y embarques; las acciones por estado contra `TransicionesPaquete.cs` y
+  `EmbarquesService.cs` (y los estados contra el enum `EstadoEmbarque`), y el monto estimado con los casos de
+  `CalculoMontoTests`.
 - Imports con extensión (`./router.tsx`), como la plantilla de Vite; sin alias de rutas. Exportaciones con nombre.
 
 ## Seguridad
@@ -733,9 +768,10 @@ No implementar algo solo porque "podría ser útil".
 - [x] **Repositorio Git (2026-10-18):** inicializado en esta carpeta con `.gitignore`, `.gitattributes` y el commit
   inicial en `main` (de ahí sale `develop`). `Claude stuff/` (copias v1 del esquema) quedó archivada fuera del workspace.
 - [ ] **Frontend (`frontend/`):** Fase 1 completa (Paso 2, 2026-10-20): base, cliente de la API, sesión, navegación
-  por rol, panel de agencias y administración de la agencia. Faltan la operación (Paso 3) y la facturación,
-  entregas y auditoría (Paso 4). La administración de la agencia no se ha probado con una cuenta ADMIN real:
-  requiere que llegue la invitación (SMTP, ver abajo).
+  por rol, panel de agencias y administración de la agencia. Fase 2 completa (Paso 3, 2026-10-21): clientes, paquetes
+  y embarques. Faltan la facturación, las entregas y la auditoría (Paso 4).
+  La administración y la operación de la agencia no se han probado con una cuenta de empleado real: requiere que
+  llegue la invitación (SMTP, ver abajo).
 - [ ] **Mejoras y decisiones abiertas:**
   - Confirmar con la agencia/contador que la tarifa incluye IVA (`impuestos = 0`).
   - Resolver preguntas abiertas de la sección 9 de `docs/modelo-datos.md` (tarifa marítima por libra o pie³,
@@ -789,14 +825,14 @@ Con el backend, la base de datos y las credenciales de Supabase listos en `user-
    - **Tipo de cambio (`/api/exchange-rates`):** consulta del tipo vigente y últimos 60 registros (`ADMIN`, `AGENTE`); registro/corrección por fecha (`PUT /api/exchange-rates/{yyyy-MM-dd}`, `ADMIN`).
    - **Ubicaciones y rutas (`/api/locations`, `/api/routes`):** listado, creación, renombrado y activación/desactivación (`ADMIN`).
 
-### Paso 3 — Frontend Fase 2: Operación de Bodega y Atención al Cliente
+### Paso 3 — Frontend Fase 2: Operación de Bodega y Atención al Cliente (completado el 2026-10-21)
 
-1. **Clientes (`/api/clients`):** listado paginado con búsqueda (nombre, código, correo, teléfono), creación, edición y activación/desactivación (`ADMIN`, `AGENTE`; lectura `BODEGA`).
-2. **Paquetes (`/api/packages`):**
+1. **Clientes (`/api/clients`)** (completado el 2026-10-21): listado paginado con búsqueda (nombre, código, correo, teléfono), creación, edición y activación/desactivación (`ADMIN`, `AGENTE`; lectura `BODEGA`).
+2. **Paquetes (`/api/packages`)** (completado el 2026-10-21):
    - Búsqueda y filtros por estado, cliente y método de envío; vista de detalle con línea de tiempo (`GET /{id}/history`).
    - Registro de paquete (`POST /api/packages`), edición por etapas (`PUT /{id}`) y cancelación con motivo (`POST /{id}/cancel`) para `ADMIN` y `AGENTE`.
    - Recepción en Miami (`POST /{id}/receive-miami`) y pesaje en Nicaragua con cálculo automático (`POST /{id}/weigh`) para `ADMIN` y `BODEGA`.
-3. **Embarques (`/api/shipments`):**
+3. **Embarques (`/api/shipments`)** (completado el 2026-10-21):
    - Listado con filtros, creación de embarque `ABIERTO`, asignación por lote (`POST /{id}/packages`) y retiro de paquetes (`POST /{id}/packages/{paqueteId}/remove`).
    - Acciones de ciclo de vida: cerrar (`/close`), registrar salida (`/depart`), registrar llegada a Nicaragua (`/arrive`) y cancelar (`/cancel`) (`ADMIN`, `BODEGA`; consulta `AGENTE`).
 

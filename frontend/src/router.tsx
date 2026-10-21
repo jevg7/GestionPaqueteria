@@ -1,5 +1,16 @@
 import { createBrowserRouter, Navigate, Outlet, type RouteObject } from 'react-router'
+import { ClienteDetalle } from './agencia/ClienteDetalle.tsx'
+import { ClienteEditar } from './agencia/ClienteEditar.tsx'
+import { ClienteNuevo } from './agencia/ClienteNuevo.tsx'
+import { ClientesLista } from './agencia/ClientesLista.tsx'
+import { EmbarqueDetalle } from './agencia/EmbarqueDetalle.tsx'
+import { EmbarqueNuevo } from './agencia/EmbarqueNuevo.tsx'
+import { EmbarquesLista } from './agencia/EmbarquesLista.tsx'
 import { PanelAgencia } from './agencia/PanelAgencia.tsx'
+import { PaqueteDetalle } from './agencia/PaqueteDetalle.tsx'
+import { PaqueteEditar } from './agencia/PaqueteEditar.tsx'
+import { PaqueteNuevo } from './agencia/PaqueteNuevo.tsx'
+import { PaquetesLista } from './agencia/PaquetesLista.tsx'
 import { TarifaNueva } from './agencia/TarifaNueva.tsx'
 import { Tarifas } from './agencia/Tarifas.tsx'
 import { TipoDeCambio } from './agencia/TipoDeCambio.tsx'
@@ -13,7 +24,7 @@ import { AceptarInvitacion } from './auth/AceptarInvitacion.tsx'
 import { IniciarSesion } from './auth/IniciarSesion.tsx'
 import { Inicio } from './auth/Inicio.tsx'
 import { RequiereRoles } from './auth/RequiereRoles.tsx'
-import { seccionesAgencia } from './auth/secciones.ts'
+import { permisos, seccionesAgencia } from './auth/secciones.ts'
 import { llevaALaContrasena } from './lib/enlaceDeAuth.ts'
 import { enlaceDeAuth } from './lib/supabase.ts'
 import { EnConstruccion } from './pages/EnConstruccion.tsx'
@@ -28,6 +39,62 @@ const PAGINA_DE_CONTRASENA = '/aceptar-invitacion'
 
 /** Páginas de cada sección de la agencia (por su ruta en auth/secciones.ts). */
 const paginasDeSeccion: Partial<Record<string, RouteObject[]>> = {
+  // Consultan ADMIN, AGENTE y BODEGA. Registran, editan y cancelan ADMIN y AGENTE; reciben y pesan ADMIN y BODEGA
+  // (esas acciones están en el detalle).
+  paquetes: [
+    { index: true, Component: PaquetesLista },
+    {
+      path: 'nuevo',
+      element: (
+        <RequiereRoles roles={permisos.GestionarPaquetes}>
+          <PaqueteNuevo />
+        </RequiereRoles>
+      ),
+    },
+    { path: ':id', Component: PaqueteDetalle },
+    {
+      path: ':id/editar',
+      element: (
+        <RequiereRoles roles={permisos.GestionarPaquetes}>
+          <PaqueteEditar />
+        </RequiereRoles>
+      ),
+    },
+  ],
+  // Consultan ADMIN, AGENTE y BODEGA; registran y editan ADMIN y AGENTE.
+  clientes: [
+    { index: true, Component: ClientesLista },
+    {
+      path: 'nuevo',
+      element: (
+        <RequiereRoles roles={permisos.EscribirClientes}>
+          <ClienteNuevo />
+        </RequiereRoles>
+      ),
+    },
+    { path: ':id', Component: ClienteDetalle },
+    {
+      path: ':id/editar',
+      element: (
+        <RequiereRoles roles={permisos.EscribirClientes}>
+          <ClienteEditar />
+        </RequiereRoles>
+      ),
+    },
+  ],
+  // Consultan ADMIN, AGENTE y BODEGA; crean y operan ADMIN y BODEGA (las acciones están en el detalle).
+  embarques: [
+    { index: true, Component: EmbarquesLista },
+    {
+      path: 'nuevo',
+      element: (
+        <RequiereRoles roles={permisos.OperarBodega}>
+          <EmbarqueNuevo />
+        </RequiereRoles>
+      ),
+    },
+    { path: ':id', Component: EmbarqueDetalle },
+  ],
   usuarios: [
     { index: true, Component: UsuariosLista },
     { path: 'nuevo', Component: UsuarioNuevo },
@@ -43,7 +110,7 @@ const paginasDeSeccion: Partial<Record<string, RouteObject[]>> = {
     {
       path: 'nueva',
       element: (
-        <RequiereRoles roles={['ADMIN']}>
+        <RequiereRoles roles={permisos.AdministrarConfiguracion}>
           <TarifaNueva />
         </RequiereRoles>
       ),

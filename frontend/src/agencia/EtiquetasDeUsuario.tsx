@@ -12,7 +12,3 @@ export function EtiquetasDeRoles({ roles }: { roles: readonly RolAgencia[] }) {
     </div>
   )
 }
-
-export function EtiquetaActivo({ activo }: { activo: boolean }) {
-  return activo ? <Etiqueta tono="verde">Activo</Etiqueta> : <Etiqueta tono="gris">Inactivo</Etiqueta>
-}
