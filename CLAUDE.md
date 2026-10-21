@@ -39,7 +39,7 @@ Si un cambio contradice el modelo, detente y pregunta; no lo "arregles" en silen
 ```text
 paqueteria/
 ├── backend/        # ASP.NET Core Web API + tests (completo: flujo operativo + administración SaaS)
-├── frontend/       # React + TypeScript + Vite (pendiente de iniciar)
+├── frontend/       # React + TypeScript + Vite (base creada; faltan las pantallas)
 ├── database/       # schema.sql (v2 congelado), seed.sql, tests/
 └── docs/
 ```
@@ -73,7 +73,8 @@ trabajo. Evitar sobrearquitectura.
 - BD: PostgreSQL en Supabase. Esquema propio `paqueteria` (no `public`, para que la Data API de
   Supabase no lo exponga). Historial de migraciones también en `paqueteria`.
 - Auth: Supabase Auth (JWT con claves asimétricas, JWKS); la API valida el token. `usuarios.auth_user_id` = claim `sub`.
-- Frontend (después): React, TypeScript, Vite, Tailwind, React Router, TanStack Query, React Hook Form, Zod.
+- Frontend: React 19, TypeScript 6, Vite 8, Tailwind 4, React Router 8, TanStack Query 5, React Hook Form,
+  Zod 4 y `@supabase/supabase-js` (solo Auth); linter Oxlint. Node 24 LTS.
 
 ## Comandos
 
@@ -123,6 +124,15 @@ dotnet user-secrets --project src/Paqueteria.Api set "Supabase:ServiceRoleKey" "
 
 La API nunca aplica migraciones al arrancar y falla al iniciar si falta `ConnectionStrings:Paqueteria`.
 `ConnectionStrings:PaqueteriaOwner` no es necesaria para ejecutar la API normalmente.
+
+```bash
+# Frontend (desde frontend/, Node 24 LTS). Una vez: copiar .env.example como .env.local y completarlo.
+npm install
+npm run dev     # http://localhost:5173 (puerto fijo: lo usan el CORS de la API y la Redirect URL de Supabase)
+npm run build   # tsc -b + vite build
+npm run lint    # oxlint --deny-warnings: una advertencia también falla
+npm test        # Vitest: pruebas unitarias, sin la API ni Supabase
+```
 
 ## Infraestructura base de la API
 
@@ -525,6 +535,81 @@ La BD las hace cumplir con triggers y restricciones; el backend no debe intentar
   409 con un mensaje de negocio. La BD queda como última defensa: si uno llega hasta ella, responde 400.
 - Códigos HTTP: 200, 201, 204, 400, 401, 403, 404, 409, 500, 503.
 
+## Frontend (`frontend/`)
+
+SPA con Vite. `src/main.tsx` monta `QueryClientProvider`, `SesionProvider` y `RouterProvider`; las rutas están en
+`src/router.tsx` (React Router 8 en modo datos: `createBrowserRouter` de `react-router`, `RouterProvider` de
+`react-router/dom`). Carpetas: `auth/` (sesión, identidad, protección de rutas, inicio de sesión e invitación),
+`agencia/` y `plataforma/` (paneles y, después, sus módulos), `components/` (interfaz compartida), `lib/`
+(infraestructura) y `pages/` (páginas genéricas). Rutas y textos de la interfaz en español.
+
+- **Configuración:** `src/lib/env.ts` valida con Zod, al arrancar, las variables de `.env.local` (plantilla en
+  `.env.example`): `VITE_API_URL` (exige https), `VITE_SUPABASE_URL` y `VITE_SUPABASE_PUBLISHABLE_KEY` (rechaza
+  una clave `sb_secret_`). El resto del código usa `env`, no `import.meta.env`.
+- **Supabase** (`src/lib/supabase.ts`) solo para Auth: los datos van siempre por la API.
+- **API** (`src/lib/api.ts`): `api.get/post/put('/api/…', …)` adjunta `Authorization: Bearer` con el token de la
+  sesión de Supabase y omite los filtros vacíos (`false` sí se envía). Toda respuesta de error se convierte en
+  `ApiError` (`status`, `detail`, `errors` por campo, `traceId`), cuyo `message` siempre se puede mostrar: el
+  `detail` del backend o un texto según el estado. `status` 0 = sin respuesta (red, API apagada, certificado o
+  CORS). Una solicitud cancelada se relanza tal cual. En la interfaz se usa `mensajeDeError(error)`. La API envía
+  los encabezados CORS también en los errores: un 401 llega como 401, no como una falla de red. `ApiError` y
+  `mensajeDeError` viven en `lib/errores.ts` (sin dependencias, para módulos y pruebas puras); `api.ts` los
+  reexporta. `Pagina<T>` = `PagedResponse<T>`.
+- **Formularios:** React Hook Form + Zod con las mismas reglas y mensajes que las DataAnnotations del DTO
+  (`lib/validacion.ts`: teléfono con el patrón del backend, correos y textos recortados). Si la API igual
+  responde 400 con `errors`, `mensajeDelEnvio` (`lib/formularios.ts`) los pone en sus campos (claves de C# →
+  camelCase) y devuelve el mensaje general. Toda escritura va por `useMutation`, así un 401 también cierra la
+  sesión. Instantes en hora de Managua; los días del calendario (`DateOnly`, "yyyy-MM-dd") se muestran sin
+  convertir de zona (`formatearDia`; leídos como medianoche UTC serían el día anterior) y "hoy" es
+  `hoyEnManagua()`, el de `CalculoMonto.FechaEnManagua` (`lib/formato.ts`). Decimales escritos con punto
+  (`decimalPositivo`); los grupos de casillas (roles) con `useController`, y `useWatch` en vez de `watch()`.
+- **Listas:** `useFiltrosDeLista` guarda filtros y página en la dirección con `flushSync`: si la actualización
+  fuera una transición (lo normal en React Router), los campos mostrarían el valor viejo y al escribir rápido se
+  perderían letras. La búsqueda sale al dejar de escribir (`useDiferido`) y la lista anterior se ve mientras
+  llega la nueva (`keepPreviousData`). Un registro por `:id` se carga con `useIdDeLaRuta` + `CargaDeRegistro`
+  (espera, error y "no existe"). Las acciones que cambian el acceso o los datos piden `Confirmacion` en la página.
+- **TanStack Query** (`src/lib/queryClient.ts`): las consultas solo se reintentan si el error es pasajero (estado 0
+  o ≥ 500), hasta dos veces; las mutaciones nunca (repetir un pago lo duplicaría).
+- **Build:** las librerías van en archivos aparte (`react`, `supabase`, `vendor`, con
+  `build.rolldownOptions.output.codeSplitting`) para que la caché del navegador sobreviva a los despliegues.
+- **Sesión** (`auth/SesionProvider.tsx`, `useSesion`): sigue `onAuthStateChange` de Supabase y, al cambiar de
+  usuario o cerrar sesión, vacía la caché de TanStack Query. `cerrarSesion()` (`lib/supabase.ts`) cierra solo en
+  este dispositivo (`scope: 'local'`). Un 401 de la API cierra la sesión y la pantalla de inicio de sesión explica
+  el motivo (`auth/salida.ts`).
+- **Identidad** (`auth/identidad.ts`): sale de `GET /api/me` (clave `['identidad', <id de Supabase>]`), no del
+  token. `AccesoProtegido` (ruta `/`) exige sesión y una cuenta con acceso: 403 → pantalla de bloqueo con el
+  `detail` del backend; otro error → reintentar o cerrar sesión. Dentro, `useIdentidadActual()`.
+- **Navegación por rol:** `/` lleva al dueño a `/plataforma` y al empleado a la primera sección de sus roles.
+  `auth/secciones.ts` define cada sección de la agencia con su permiso de `Auth/Permisos.cs` y sus roles;
+  `secciones.test.ts` las compara con ese archivo, así que cambiar un permiso en el backend obliga a actualizar el
+  menú. `RequiereRoles` muestra "Sin acceso" en una sección no permitida. `PanelAgencia` precarga `/api/catalogs`
+  (`agencia/catalogos.ts`).
+- **Invitación y recuperación** (`/aceptar-invitacion`, `Supabase:InviteRedirectUrl`): supabase-js toma la
+  sesión del enlace (flujo implícito) y el usuario elige su contraseña (≥ 8 caracteres; Supabase puede exigir
+  más: `weak_password`). `lib/supabase.ts` lee la URL antes que Supabase para reconocer el tipo de enlace y uno
+  vencido (`otp_expired`). Los correos del panel de Supabase, o los de una `redirect_to` no permitida, llegan a
+  la Site URL (`/`): `router.tsx` los lleva a `/aceptar-invitacion` antes de crear el router; si no, el usuario
+  entraría con la sesión del enlace sin elegir contraseña. Los errores de Supabase Auth se traducen en
+  `auth/mensajesAuth.ts`.
+- **Panel de la plataforma** (`plataforma/`): `/plataforma/agencias` (lista; búsqueda, estado y página viven en
+  la dirección), `/nueva` (agencia + invitación de su primer ADMIN; todo o nada en la API), `/:id` (detalle;
+  suspender o reactivar con confirmación) y `/:id/editar`. Las claves de caché cuelgan de `claveAgencias`.
+- **Administración de la agencia** (`agencia/`; páginas de cada sección en `paginasDeSeccion` de `router.tsx`,
+  que exige los roles de la sección para todas sus subrutas; las secciones sin páginas dicen "en construcción"):
+  - `/usuarios` (ADMIN): lista con filtros por estado y rol, alta con invitación y roles, detalle (desactivar o
+    activar, reenviar invitación) y edición. El ADMIN no ve cómo desactivarse ni quitarse su rol ADMIN (la API
+    responde 409); si cambia sus roles, se vuelve a pedir `/api/me` para el menú.
+  - `/tarifas` (ADMIN, AGENTE, BODEGA): las de hoy y el historial; `/tarifas/nueva` y anular solo el ADMIN.
+  - `/tipo-de-cambio` (ADMIN, AGENTE): el vigente (404 de `/current` = ninguno) y los últimos; registrar o
+    corregir un día solo el ADMIN.
+  - `/ubicaciones` (ADMIN): ubicaciones y rutas, alta, renombre en la fila y activar/desactivar. Todo cambio
+    invalida también `/api/catalogs`.
+- **Pruebas:** Vitest (`npm test`), junto al código como `*.test.ts`: cliente de la API (simula `fetch` y la
+  sesión), secciones contra `Permisos.cs`, mensajes de Supabase, lectura del enlace de invitación, reglas de
+  validación, errores por campo, fechas y los esquemas de agencias, usuarios, tarifas, tipo de cambio y
+  ubicaciones.
+- Imports con extensión (`./router.tsx`), como la plantilla de Vite; sin alias de rutas. Exportaciones con nombre.
+
 ## Seguridad
 
 - Nunca poner contraseñas, cadenas de conexión, API keys ni secretos en el repositorio.
@@ -647,14 +732,19 @@ No implementar algo solo porque "podría ser útil".
 - [ ] **Segundo dueño de la plataforma (opcional cuando esté listo):** agregar `Plataforma:Propietarios:1` en `user-secrets` (el primero ya está configurado).
 - [x] **Repositorio Git (2026-10-18):** inicializado en esta carpeta con `.gitignore`, `.gitattributes` y el commit
   inicial en `main` (de ahí sale `develop`). `Claude stuff/` (copias v1 del esquema) quedó archivada fuera del workspace.
-- [ ] **Frontend (`frontend/`):** aún no se ha creado el proyecto React + TypeScript + Vite.
+- [ ] **Frontend (`frontend/`):** Fase 1 completa (Paso 2, 2026-10-20): base, cliente de la API, sesión, navegación
+  por rol, panel de agencias y administración de la agencia. Faltan la operación (Paso 3) y la facturación,
+  entregas y auditoría (Paso 4). La administración de la agencia no se ha probado con una cuenta ADMIN real:
+  requiere que llegue la invitación (SMTP, ver abajo).
 - [ ] **Mejoras y decisiones abiertas:**
   - Confirmar con la agencia/contador que la tarifa incluye IVA (`impuestos = 0`).
   - Resolver preguntas abiertas de la sección 9 de `docs/modelo-datos.md` (tarifa marítima por libra o pie³,
     redondeo/mínimo de peso, paquetes sin aviso en Miami, cédula del cliente).
   - Búsqueda de clientes sin distinguir acentos (`unaccent` + migración).
   - Evaluar si se requieren permisos finos (`Permiso`/`RolPermiso`) y cuadre de caja del repartidor.
-  - Definir `Cors:AllowedOrigins` y SMTP propio en Supabase para producción.
+  - Definir `Cors:AllowedOrigins` y SMTP propio en Supabase para producción. Sin SMTP propio, Supabase solo
+    envía correos a los miembros del equipo del proyecto (y 2 por hora): una invitación a otro correo falla con
+    `email_address_not_authorized`, que la API muestra hoy como "El sistema de acceso rechazó el correo…".
 
 ---
 
@@ -676,24 +766,24 @@ Con el backend, la base de datos y las credenciales de Supabase listos en `user-
    dotnet user-secrets --project src/Paqueteria.Api set "Plataforma:Propietarios:1" "<correo dueño 2>"
    ```
 
-### Paso 2 — Frontend Fase 1: Base, Autenticación, Plataforma y Administración (`frontend/`)
+### Paso 2 — Frontend Fase 1: Base, Autenticación, Plataforma y Administración (`frontend/`) (completado el 2026-10-20)
 
-1. **Inicializar proyecto (`frontend/`):** React + TypeScript + Vite + Tailwind CSS + React Router +
+1. **Inicializar proyecto (`frontend/`)** (completado el 2026-10-18): React + TypeScript + Vite + Tailwind CSS + React Router +
    TanStack Query + React Hook Form + Zod + `@supabase/supabase-js`.
-2. **Cliente de API y manejo de errores:**
+2. **Cliente de API y manejo de errores** (completado el 2026-10-18):
    - Base URL hacia `https://localhost:7225` (`VITE_API_URL`), adjuntando `Authorization: Bearer <access_token>` de la sesión de Supabase.
    - Interceptor/helper para leer `application/problem+json` (`ProblemDetails`) y mostrar el campo `detail` en errores `400`, `403`, `409` y `503`.
-3. **Sesión, identidad (`GET /api/me`) y navegación por rol:**
+3. **Sesión, identidad (`GET /api/me`) y navegación por rol** (completado el 2026-10-20):
    - Pantalla de Login con Supabase Auth y ruta `/aceptar-invitacion` para que los usuarios invitados creen su contraseña.
    - Consultar `GET /api/me` al autenticarse:
      - Si responde `403` (`SIN_CUENTA`, `USUARIO_INACTIVO`, `AGENCIA_SUSPENDIDA`), mostrar pantalla de bloqueo con el mensaje de `detail` y opción de cerrar sesión.
      - Si `tipo === "PLATAFORMA"`, dirigir al **Panel de Plataforma**.
      - Si `tipo === "AGENCIA"`, precargar `GET /api/catalogs` y mostrar el layout de la agencia habilitando secciones según `roles` (`ADMIN`, `AGENTE`, `BODEGA`, `REPARTIDOR`).
-4. **Panel del dueño de la plataforma (`PLATAFORMA`):**
+4. **Panel del dueño de la plataforma (`PLATAFORMA`)** (completado el 2026-10-20):
    - Listado, búsqueda y filtro por estado (`GET /api/platform/agencies`).
    - Alta de agencia + invitación de su primer `ADMIN` (`POST /api/platform/agencies`).
    - Edición de datos de la agencia (`PUT /{id}`) y suspensión/reactivación (`POST /{id}/suspend` y `/activate`).
-5. **Administración de la agencia (`ADMIN`):**
+5. **Administración de la agencia (`ADMIN`)** (completado el 2026-10-20):
    - **Usuarios (`/api/users`):** listado, alta con invitación y selección de roles, edición de datos/roles, activar/desactivar y reenviar invitación (`POST /{id}/resend-invite`).
    - **Tarifas (`/api/rates`):** vista de tarifas actuales (`/current`) e historial (`ADMIN`, `AGENTE`, `BODEGA`); registro de nueva tarifa y anulación (`ADMIN`).
    - **Tipo de cambio (`/api/exchange-rates`):** consulta del tipo vigente y últimos 60 registros (`ADMIN`, `AGENTE`); registro/corrección por fecha (`PUT /api/exchange-rates/{yyyy-MM-dd}`, `ADMIN`).

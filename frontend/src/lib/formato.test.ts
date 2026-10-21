@@ -1,0 +1,34 @@
+import { describe, expect, it } from 'vitest'
+import { formatearDia, formatearFecha, formatearFechaHora, formatearNumero, hoyEnManagua } from './formato.ts'
+
+describe('instantes en hora de Managua (UTC−6)', () => {
+  it('las 03:00 UTC todavía son el día anterior en Managua', () => {
+    // 2026-10-21 03:00 UTC = 2026-10-20 21:00 en Managua.
+    expect(formatearFecha('2026-10-21T03:00:00Z')).toBe(formatearFecha('2026-10-20T12:00:00Z'))
+    expect(formatearFecha('2026-10-21T03:00:00Z')).not.toBe(formatearFecha('2026-10-21T12:00:00Z'))
+  })
+
+  it('la hora se muestra en Managua', () => {
+    expect(formatearFechaHora('2026-10-20T18:30:00Z')).toContain('12:30')
+  })
+})
+
+describe('días del calendario', () => {
+  it('un día se muestra tal cual, sin convertirlo de zona (el 1 de enero no pasa a ser 31 de diciembre)', () => {
+    expect(formatearDia('2026-01-01')).toContain('2026')
+    expect(formatearDia('2026-01-01')).not.toContain('31')
+  })
+
+  it('hoy en Managua cambia a medianoche de Managua, no de UTC', () => {
+    expect(hoyEnManagua(new Date('2026-10-21T03:00:00Z'))).toBe('2026-10-20')
+    expect(hoyEnManagua(new Date('2026-10-21T06:00:00Z'))).toBe('2026-10-21')
+  })
+})
+
+describe('formatearNumero', () => {
+  it('muestra entre 2 y 4 decimales', () => {
+    expect(formatearNumero(3.5)).toBe('3.50')
+    expect(formatearNumero(36.6243)).toBe('36.6243')
+    expect(formatearNumero(36.62436)).toBe('36.6244')
+  })
+})
