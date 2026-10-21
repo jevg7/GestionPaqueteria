@@ -9,6 +9,7 @@ import { EnlaceBoton } from '../components/EnlaceBoton.tsx'
 import { formatearFechaHora } from '../lib/formato.ts'
 import { CancelarPaquete, Pesar, RecibirEnMiami } from './AccionesDePaquete.tsx'
 import { nombreDelCliente } from './clientes.ts'
+import { claveEmbarques } from './embarques.ts'
 import { ConPaquete } from './ConPaquete.tsx'
 import { EtiquetaEstadoPaquete } from './EtiquetaEstadoPaquete.tsx'
 import { HistorialPaquete } from './HistorialPaquete.tsx'
@@ -56,6 +57,8 @@ function Detalle({ paquete, navegacion }: { paquete: Paquete; navegacion: Estado
     queryClient.setQueryData(opcionesPaquete(actualizado.id).queryKey, actualizado)
     void queryClient.invalidateQueries({ queryKey: opcionesHistorialPaquete(actualizado.id).queryKey })
     void queryClient.invalidateQueries({ queryKey: [...clavePaquetes, 'lista'] })
+    // Cancelar un paquete lo quita de su embarque: cambia la cantidad y la lista de paquetes del embarque.
+    if (paquete.codigoEmbarque) void queryClient.invalidateQueries({ queryKey: claveEmbarques })
     setAccion(undefined)
     setAviso({ texto, otro: false })
   }
@@ -107,7 +110,20 @@ function Detalle({ paquete, navegacion }: { paquete: Paquete; navegacion: Estado
         <Dato nombre="Tracking" valor={paquete.trackingExterno} />
         <Dato nombre="Tienda" valor={paquete.tienda} />
         <Dato nombre="Descripción" valor={paquete.descripcion} ancho />
-        <Dato nombre="Embarque" valor={paquete.codigoEmbarque} />
+        <Dato
+          nombre="Embarque"
+          valor={
+            paquete.codigoEmbarque && (
+              // La API da el código del embarque, no su id: lleva a la lista filtrada por ese código.
+              <Link
+                to={`/embarques?buscar=${encodeURIComponent(paquete.codigoEmbarque)}`}
+                className="font-medium text-blue-800 hover:underline"
+              >
+                {paquete.codigoEmbarque}
+              </Link>
+            )
+          }
+        />
         <Dato nombre="Peso y monto" valor={textoDelCalculo(paquete)} />
         <Dato nombre="Registrado" valor={formatearFechaHora(paquete.fechaRegistro)} />
         <Dato nombre="Recibido en Miami" valor={paquete.fechaRecepcionMiami && formatearFechaHora(paquete.fechaRecepcionMiami)} />

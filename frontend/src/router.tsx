@@ -3,6 +3,9 @@ import { ClienteDetalle } from './agencia/ClienteDetalle.tsx'
 import { ClienteEditar } from './agencia/ClienteEditar.tsx'
 import { ClienteNuevo } from './agencia/ClienteNuevo.tsx'
 import { ClientesLista } from './agencia/ClientesLista.tsx'
+import { EmbarqueDetalle } from './agencia/EmbarqueDetalle.tsx'
+import { EmbarqueNuevo } from './agencia/EmbarqueNuevo.tsx'
+import { EmbarquesLista } from './agencia/EmbarquesLista.tsx'
 import { PanelAgencia } from './agencia/PanelAgencia.tsx'
 import { PaqueteDetalle } from './agencia/PaqueteDetalle.tsx'
 import { PaqueteEditar } from './agencia/PaqueteEditar.tsx'
@@ -78,6 +81,19 @@ const paginasDeSeccion: Partial<Record<string, RouteObject[]>> = {
         </RequiereRoles>
       ),
     },
+  ],
+  // Consultan ADMIN, AGENTE y BODEGA; crean y operan ADMIN y BODEGA (las acciones están en el detalle).
+  embarques: [
+    { index: true, Component: EmbarquesLista },
+    {
+      path: 'nuevo',
+      element: (
+        <RequiereRoles roles={permisos.OperarBodega}>
+          <EmbarqueNuevo />
+        </RequiereRoles>
+      ),
+    },
+    { path: ':id', Component: EmbarqueDetalle },
   ],
   usuarios: [
     { index: true, Component: UsuariosLista },
