@@ -2,10 +2,10 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { useMemo, useState } from 'react'
 import { useForm, useWatch } from 'react-hook-form'
-import { AreaDeTexto } from '../components/AreaDeTexto.tsx'
 import { Aviso } from '../components/Aviso.tsx'
 import { Boton } from '../components/Boton.tsx'
 import { Campo } from '../components/Campo.tsx'
+import { ConfirmacionConMotivo } from '../components/ConfirmacionConMotivo.tsx'
 import { Seleccion } from '../components/Seleccion.tsx'
 import { cocienteRedondeado, restaDeMontos } from '../lib/dinero.ts'
 import { mensajeDeError } from '../lib/errores.ts'
@@ -23,7 +23,6 @@ import {
   registrarPago,
   saldoEnMoneda,
   textoDelPago,
-  type DatosAnulacion,
   type DatosPago,
   type Factura,
   type FormularioPago,
@@ -187,8 +186,9 @@ export function RegistrarPago({ factura, alTerminar, alVolver }: Props) {
 export function AnularFactura({ factura, alTerminar, alVolver }: Props) {
   const anulacion = useMutation({ mutationFn: (motivo: string) => anularFactura(factura.id, motivo) })
   return (
-    <ConMotivo
+    <ConfirmacionConMotivo
       mensaje={`¿Anular la factura ${factura.numeroFactura}? Queda como comprobante anulado y sus paquetes podrán facturarse de nuevo. No se puede deshacer.`}
+      esquema={esquemaAnulacion}
       textoConfirmar="Sí, anular factura"
       alConfirmar={async (motivo) => {
         await anulacion.mutateAsync(motivo)
@@ -204,12 +204,13 @@ export function AnularPago({ factura, pago, alTerminar, alVolver }: Props & { pa
   const anulacion = useMutation({ mutationFn: (motivo: string) => anularPago(pago.id, motivo) })
   const estabaPagada = factura.saldo === 0
   return (
-    <ConMotivo
+    <ConfirmacionConMotivo
       mensaje={
         `¿Anular el pago de ${textoDelPago(pago)}? Deja de contar para el saldo de la factura.` +
         (estabaPagada ? ' La factura dejará de estar pagada: sus paquetes pagados vuelven a Pendiente de pago.' : '') +
         ' No se puede deshacer.'
       }
+      esquema={esquemaAnulacion}
       textoConfirmar="Sí, anular pago"
       alConfirmar={async (motivo) => {
         await anulacion.mutateAsync(motivo)
@@ -224,48 +225,3 @@ export function AnularPago({ factura, pago, alTerminar, alVolver }: Props & { pa
   )
 }
 
-/** Confirmación con el motivo obligatorio (VoidRequest); muestra el 409 de la API si la anulación no procede. */
-function ConMotivo({
-  mensaje,
-  textoConfirmar,
-  alConfirmar,
-  alVolver,
-}: {
-  mensaje: string
-  textoConfirmar: string
-  alConfirmar: (motivo: string) => Promise<void>
-  alVolver: () => void
-}) {
-  const [errorGeneral, setErrorGeneral] = useState<string>()
-  const {
-    register,
-    handleSubmit,
-    setError,
-    formState: { errors, isSubmitting },
-  } = useForm<DatosAnulacion>({ resolver: zodResolver(esquemaAnulacion), defaultValues: { motivo: '' } })
-
-  const confirmar = async ({ motivo }: DatosAnulacion) => {
-    setErrorGeneral(undefined)
-    try {
-      await alConfirmar(motivo)
-    } catch (error) {
-      setErrorGeneral(mensajeDelEnvio(error, setError, ['motivo']))
-    }
-  }
-
-  return (
-    <form onSubmit={handleSubmit(confirmar)} noValidate className={marco}>
-      <p className="text-sm text-slate-700">{mensaje}</p>
-      <AreaDeTexto etiqueta="Motivo" rows={2} error={errors.motivo?.message} {...register('motivo')} />
-      {errorGeneral && <Aviso tipo="error">{errorGeneral}</Aviso>}
-      <div className="flex flex-wrap gap-3">
-        <Boton type="submit" variante="peligro" cargando={isSubmitting}>
-          {textoConfirmar}
-        </Boton>
-        <Boton variante="secundario" disabled={isSubmitting} onClick={alVolver}>
-          Volver
-        </Boton>
-      </div>
-    </form>
-  )
-}

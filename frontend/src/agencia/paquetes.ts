@@ -115,6 +115,12 @@ export const sePuedeRecibirEnMiami = (estado: EstadoPaquete) => estado === 'REGI
 /** Se pesa al llegar a Nicaragua; en PENDIENTE_DE_PAGO se corrige el peso si no está facturado (eso lo dice la API). */
 export const sePuedePesar = (estado: EstadoPaquete) => estado === 'RECIBIDO_EN_NICARAGUA' || estado === 'PENDIENTE_DE_PAGO'
 
+/**
+ * Listo para entrega (PrepararEntregaAsync): desde PAGADO, o desde PENDIENTE_DE_PAGO para cobrar contra entrega (la API
+ * exige que ya tenga factura emitida).
+ */
+export const sePuedePreparar = (estado: EstadoPaquete) => estado === 'PAGADO' || estado === 'PENDIENTE_DE_PAGO'
+
 export const tonosDeEstado: Record<EstadoPaquete, Tono> = {
   REGISTRADO: 'gris',
   RECIBIDO_EN_MIAMI: 'azul',

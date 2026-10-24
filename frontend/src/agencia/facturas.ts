@@ -5,7 +5,7 @@ import type { Tono } from '../components/Etiqueta.tsx'
 import { api, type Pagina } from '../lib/api.ts'
 import { aCentavos, cocienteRedondeado, productoRedondeado } from '../lib/dinero.ts'
 import { formatearCordobas, formatearDolares, formatearNumero } from '../lib/formato.ts'
-import { decimalPositivo, textoOpcional } from '../lib/validacion.ts'
+import { decimalPositivo, esquemaDeMotivo, textoOpcional } from '../lib/validacion.ts'
 import type { ReferenciaCliente } from './clientes.ts'
 import { clavePaquetes, type Paquete } from './paquetes.ts'
 
@@ -22,6 +22,8 @@ export const estadosDePagoVisibles: Record<EstadoDePago, { nombre: string; tono:
 
 export const metodosDePago = ['EFECTIVO', 'TRANSFERENCIA', 'TARJETA', 'OTRO'] as const
 export type MetodoDePago = (typeof metodosDePago)[number]
+
+export const esMetodoDePago = (valor: string): valor is MetodoDePago => (metodosDePago as readonly string[]).includes(valor)
 
 export const nombresDeMetodoDePago: Record<MetodoDePago, string> = {
   EFECTIVO: 'Efectivo',
@@ -189,7 +191,7 @@ export function esquemaPago(saldo: number, tipoDeCambio: number | null) {
       monto: montoDelPago,
       // Empieza sin elegir: el método de cada pago importa para cuadrar la caja.
       metodoPago: z.string().transform((metodo, contexto) => {
-        if ((metodosDePago as readonly string[]).includes(metodo)) return metodo as MetodoDePago
+        if (esMetodoDePago(metodo)) return metodo
         contexto.addIssue({ code: 'custom', message: 'Elija el método de pago.' })
         return z.NEVER
       }),
@@ -235,9 +237,7 @@ export type DatosPago = z.output<ReturnType<typeof esquemaPago>>
 export const camposDePago = ['moneda', 'monto', 'metodoPago', 'referencia'] as const satisfies readonly Path<FormularioPago>[]
 
 /** VoidRequest: anular una factura o un pago exige el motivo. */
-export const esquemaAnulacion = z.object({ motivo: z.string().trim().min(1, 'El motivo de la anulación es obligatorio.') })
-
-export type DatosAnulacion = z.output<typeof esquemaAnulacion>
+export const esquemaAnulacion = esquemaDeMotivo('El motivo de la anulación es obligatorio.')
 
 export const emitirFactura = (clienteId: number, paqueteIds: number[]) => api.post<Factura>('/api/invoices', { clienteId, paqueteIds })
 export const registrarPago = (facturaId: number, pago: DatosPago) => api.post<Pago>(`/api/invoices/${facturaId}/payments`, pago)

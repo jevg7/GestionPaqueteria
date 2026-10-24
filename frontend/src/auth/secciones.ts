@@ -32,6 +32,11 @@ export const permisos = {
   GestionarPaquetes: ['ADMIN', 'AGENTE'],
   OperarBodega: ['ADMIN', 'BODEGA'],
   Facturar: ['ADMIN', 'AGENTE'],
+  PrepararEntrega: ['ADMIN', 'AGENTE', 'BODEGA'],
+  ProgramarEntregas: ['ADMIN', 'AGENTE'],
+  OperarReparto: ['ADMIN', 'AGENTE', 'REPARTIDOR'],
+  // /api/users: con él se elige el repartidor de una entrega (la API no ofrece otra lista de repartidores).
+  AdministrarUsuarios: ['ADMIN'],
   AdministrarFinanzas: ['ADMIN'],
   AdministrarConfiguracion: ['ADMIN'],
 } as const satisfies Record<string, readonly RolAgencia[]>

@@ -6,6 +6,9 @@ import { ClientesLista } from './agencia/ClientesLista.tsx'
 import { EmbarqueDetalle } from './agencia/EmbarqueDetalle.tsx'
 import { EmbarqueNuevo } from './agencia/EmbarqueNuevo.tsx'
 import { EmbarquesLista } from './agencia/EmbarquesLista.tsx'
+import { EntregaNueva } from './agencia/EntregaNueva.tsx'
+import { Entregas } from './agencia/Entregas.tsx'
+import { EntregasHistorial } from './agencia/EntregasHistorial.tsx'
 import { FacturaDetalle } from './agencia/FacturaDetalle.tsx'
 import { FacturaNueva } from './agencia/FacturaNueva.tsx'
 import { FacturasLista } from './agencia/FacturasLista.tsx'
@@ -103,6 +106,20 @@ const paginasDeSeccion: Partial<Record<string, RouteObject[]>> = {
     { index: true, Component: FacturasLista },
     { path: 'nueva', Component: FacturaNueva },
     { path: ':id', Component: FacturaDetalle },
+  ],
+  // Consultan todos (el REPARTIDOR, solo las suyas); programan ADMIN y AGENTE; salen a ruta y confirman ADMIN, AGENTE y
+  // REPARTIDOR (las acciones están en la página de entregas en curso).
+  entregas: [
+    { index: true, Component: Entregas },
+    { path: 'historial', Component: EntregasHistorial },
+    {
+      path: 'nueva',
+      element: (
+        <RequiereRoles roles={permisos.ProgramarEntregas}>
+          <EntregaNueva />
+        </RequiereRoles>
+      ),
+    },
   ],
   usuarios: [
     { index: true, Component: UsuariosLista },
