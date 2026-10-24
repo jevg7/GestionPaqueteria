@@ -749,12 +749,12 @@ SPA con Vite. `src/main.tsx` monta `QueryClientProvider`, `SesionProvider` y `Ro
   módulos: invitación y entrada del invitado, fallas de Supabase sin dejar datos, reglas del ADMIN (con
   la carrera de dos ADMIN), alta de agencia completa con su auditoría, cierre y reapertura de tarifas,
   rutas US → NI, aislamiento y permisos.
-- Última verificación completa con Docker (2026-09-29, administración): `dotnet build` sin advertencias ni errores;
-  `dotnet test` con 409 pruebas aprobadas: 145 unitarias y 264 de integración (50 nuevas: 8 de
-  aislamiento entre agencias, 18 de usuarios, 8 de plataforma, 10 de tarifas y 6 de ubicaciones y
-  rutas), ninguna omitida.
-  Siguen pasando `SchemaSqlSigueCongelado`, `HasPendingModelChanges() = false`, la comparación
-  del modelo con PostgreSQL 16 y `flujo_completo.sql` mediante la migración `Baseline`.
+- Última verificación completa con Docker (2026-10-24, reparto): `dotnet build` sin advertencias ni errores;
+  `dotnet test` con 414 pruebas aprobadas: 145 unitarias y 269 de integración (5 nuevas en `EntregasTests`:
+  repartidores asignables, tipo de cambio vigente para el repartidor y 3 casos de la matriz de permisos), ninguna
+  omitida. Siguen pasando `SchemaSqlSigueCongelado`, `HasPendingModelChanges() = false`, la comparación del modelo
+  con PostgreSQL 16 y `flujo_completo.sql` mediante la migración `Baseline`. (La anterior, 2026-09-29, con la
+  administración: 409 pruebas.)
 - Verificación contra Supabase real (2026-10-18): migración `20260930001535_Baseline` aplicada sobre el pooler
   en modo sesión (`aws-1-us-west-2.pooler.supabase.com:5432`), rol `paqueteria_api_app` creado, `seed.sql`
   cargado y `flujo_completo.sql` ejecutado completo (`=== TODAS LAS PRUEBAS PASARON ===`); `dotnet build`
