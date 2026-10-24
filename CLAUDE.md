@@ -39,7 +39,7 @@ Si un cambio contradice el modelo, detente y pregunta; no lo "arregles" en silen
 ```text
 paqueteria/
 ├── backend/        # ASP.NET Core Web API + tests (completo: flujo operativo + administración SaaS)
-├── frontend/       # React + TypeScript + Vite (administración y operación; faltan facturación, entregas y auditoría)
+├── frontend/       # React + TypeScript + Vite (completo: plataforma, administración, operación, caja, entregas, auditoría)
 ├── database/       # schema.sql (v2 congelado), seed.sql, tests/
 └── docs/
 ```
@@ -661,6 +661,12 @@ SPA con Vite. `src/main.tsx` monta `QueryClientProvider`, `SesionProvider` y `Ro
     se comparan con `EntregasService.cs`. La lista de repartidores sale de `/api/users`: solo el ADMIN la ve; el AGENTE
     programa sin repartidor y no saca a ruta una entrega sin asignar (ver decisiones abiertas). En la ficha del paquete:
     "Preparar para entrega" (`PrepararEntrega`, desde PAGADO o PENDIENTE_DE_PAGO con factura) y "Programar entrega".
+  - `/auditoria` (`VerAuditoria`: ADMIN): los cambios más recientes primero, con filtros por tabla, registro (con la
+    tabla, su historia), usuario, acción y rango de días (`inicioDelDia`/`finDelDia`, en hora de Managua; un rango al
+    revés no se consulta). Cada cambio muestra quién (o "Dueño de la plataforma" si el origen empieza con
+    `[plataforma`), el origen, la traza y sus campos con el nombre de la columna: en un UPDATE, antes y después; en un
+    alta o un borrado, sus valores plegados. Las fichas de cliente, paquete y factura enlazan a su auditoría
+    (`EnlaceAuditoria`). `tablasAuditadas` se compara con la lista de `schema.sql`.
 - **Componentes compartidos** (`components/`): además de botones y campos, `AreaDeTexto` (varias líneas; `Dato`
   respeta los saltos de línea al mostrarlas), `EtiquetaActivo` y `campoDeFiltro` (`estilos.ts`) para las búsquedas
   y filtros de las listas.
@@ -668,9 +674,9 @@ SPA con Vite. `src/main.tsx` monta `QueryClientProvider`, `SesionProvider` y `Ro
   sesión), secciones y operaciones contra `Permisos.cs`, mensajes de Supabase, lectura del enlace de invitación,
   reglas de validación, errores por campo, fechas y los esquemas de agencias, usuarios, tarifas, tipo de cambio,
   ubicaciones, clientes, paquetes, embarques, facturas y entregas; las acciones por estado contra
-  `TransicionesPaquete.cs`, `EmbarquesService.cs` y `EntregasService.cs`, los estados, tipos, métodos de pago y monedas
-  contra los enums del backend, y el dinero con los casos de `CalculoMontoTests` (incluido "pagar en córdobas el saldo
-  convertido lo salda exacto", con 100 000 casos).
+  `TransicionesPaquete.cs`, `EmbarquesService.cs` y `EntregasService.cs`, los estados, tipos, métodos de pago, monedas y
+  acciones de auditoría contra los enums del backend, las tablas auditadas contra `schema.sql`, y el dinero con los casos
+  de `CalculoMontoTests` (incluido "pagar en córdobas el saldo convertido lo salda exacto", con 100 000 casos).
 - Imports con extensión (`./router.tsx`), como la plantilla de Vite; sin alias de rutas. Exportaciones con nombre.
 
 ## Seguridad
@@ -795,10 +801,9 @@ No implementar algo solo porque "podría ser útil".
 - [ ] **Segundo dueño de la plataforma (opcional cuando esté listo):** agregar `Plataforma:Propietarios:1` en `user-secrets` (el primero ya está configurado).
 - [x] **Repositorio Git (2026-10-18):** inicializado en esta carpeta con `.gitignore`, `.gitattributes` y el commit
   inicial en `main` (de ahí sale `develop`). `Claude stuff/` (copias v1 del esquema) quedó archivada fuera del workspace.
-- [ ] **Frontend (`frontend/`):** Fase 1 completa (Paso 2, 2026-10-20): base, cliente de la API, sesión, navegación
-  por rol, panel de agencias y administración de la agencia. Fase 2 completa (Paso 3, 2026-10-21): clientes, paquetes
-  y embarques. Paso 4 en curso (rama `feature/frontend-fase-3`): facturación y pagos, y entregas y reparto, listos
-  (2026-10-24); falta la auditoría.
+- [x] **Frontend (`frontend/`):** Fase 1 (Paso 2, 2026-10-20): base, cliente de la API, sesión, navegación por rol,
+  panel de agencias y administración de la agencia. Fase 2 (Paso 3, 2026-10-21): clientes, paquetes y embarques. Fase 3
+  (Paso 4, 2026-10-24): facturación y pagos, entregas y reparto, y auditoría. Cubre todos los endpoints del backend.
   La administración y la operación de la agencia no se han probado con una cuenta de empleado real: requiere que
   llegue la invitación (SMTP, ver abajo).
 - [ ] **Mejoras y decisiones abiertas:**
@@ -872,7 +877,7 @@ Con el backend, la base de datos y las credenciales de Supabase listos en `user-
    - Listado con filtros, creación de embarque `ABIERTO`, asignación por lote (`POST /{id}/packages`) y retiro de paquetes (`POST /{id}/packages/{paqueteId}/remove`).
    - Acciones de ciclo de vida: cerrar (`/close`), registrar salida (`/depart`), registrar llegada a Nicaragua (`/arrive`) y cancelar (`/cancel`) (`ADMIN`, `BODEGA`; consulta `AGENTE`).
 
-### Paso 4 — Frontend Fase 3: Facturación, Caja, Entregas y Auditoría
+### Paso 4 — Frontend Fase 3: Facturación, Caja, Entregas y Auditoría (completado el 2026-10-24)
 
 1. **Facturación y pagos (`/api/invoices`, `/api/payments`)** (completado el 2026-10-24):
    - Emisión de factura seleccionando los paquetes `PENDIENTE_DE_PAGO` de un cliente (`POST /api/invoices`).
@@ -882,7 +887,7 @@ Con el backend, la base de datos y las credenciales de Supabase listos en `user-
    - Acción para marcar paquetes como `LISTO_PARA_ENTREGA` (`ADMIN`, `AGENTE`, `BODEGA`).
    - Registro de retiro en agencia agrupado (`POST /api/deliveries/pickup`) y programación/cancelación de deliveries (`POST /api/deliveries`, `POST /api/deliveries/cancel`) (`ADMIN`, `AGENTE`).
    - Vista operativa para `REPARTIDOR` (y `ADMIN`/`AGENTE` en su nombre): consultar entregas asignadas, salir a ruta (`/dispatch`), confirmar entrega (`/deliver`) incluyendo formulario de **cobro contra entrega** cuando `cobroPendiente > 0`, o reportar entrega fallida (`/fail`).
-3. **Auditoría (`/api/audit-logs`):**
+3. **Auditoría (`/api/audit-logs`)** (completado el 2026-10-24):
    - Pantalla exclusiva para `ADMIN` con filtros por tabla, `registroId`, usuario, acción y rango de fechas (`desde`/`hasta`), mostrando el diff entre `valoresAnteriores` y `valoresNuevos`.
 
 ### Paso 5 — Cierre de reglas abiertas y preparación para producción

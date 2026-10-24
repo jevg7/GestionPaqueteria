@@ -10,6 +10,7 @@ import { formatearDolares, formatearFechaHora } from '../lib/formato.ts'
 import { AnularFactura, AnularPago, RegistrarPago } from './AccionesDeFactura.tsx'
 import { nombreDelCliente } from './clientes.ts'
 import { ConFactura } from './ConFactura.tsx'
+import { EnlaceAuditoria } from './EnlaceAuditoria.tsx'
 import { EtiquetaEstadoDePago } from './EtiquetaEstadoDePago.tsx'
 import {
   claveFacturas,
@@ -37,6 +38,7 @@ export function FacturaDetalle() {
 
 function Detalle({ factura, navegacion }: { factura: Factura; navegacion: EstadoDeNavegacion }) {
   const anula = usePermiso('AdministrarFinanzas')
+  const audita = usePermiso('VerAuditoria')
   const queryClient = useQueryClient()
   const [aviso, setAviso] = useState(navegacion?.aviso)
   const [accion, setAccion] = useState<'pagar' | 'anular'>()
@@ -100,6 +102,7 @@ function Detalle({ factura, navegacion }: { factura: Factura; navegacion: Estado
           <Dato nombre="Saldo" valor={<strong className="text-base">{formatearDolares(factura.saldo)}</strong>} ancho />
         )}
       </dl>
+      {audita && <EnlaceAuditoria tabla="facturas" registro={factura.id} />}
 
       {!ocupado && (sePuedePagar(factura) || (anula && sePuedeAnular(factura))) && (
         <div className="mt-6 flex flex-wrap gap-3">

@@ -14,6 +14,7 @@ import { nombreDelCliente } from './clientes.ts'
 import { claveEmbarques } from './embarques.ts'
 import { prepararParaEntrega } from './entregas.ts'
 import { ConPaquete } from './ConPaquete.tsx'
+import { EnlaceAuditoria } from './EnlaceAuditoria.tsx'
 import { EtiquetaEstadoPaquete } from './EtiquetaEstadoPaquete.tsx'
 import { HistorialPaquete } from './HistorialPaquete.tsx'
 import {
@@ -48,6 +49,7 @@ function Detalle({ paquete, navegacion }: { paquete: Paquete; navegacion: Estado
   const operaBodega = usePermiso('OperarBodega')
   const preparaEntregas = usePermiso('PrepararEntrega')
   const programaEntregas = usePermiso('ProgramarEntregas')
+  const audita = usePermiso('VerAuditoria')
   const queryClient = useQueryClient()
   // Recién registrado, el aviso ofrece registrar otro paquete para el mismo cliente (suelen avisar varios).
   const [aviso, setAviso] = useState(navegacion?.aviso ? { texto: navegacion.aviso, otro: navegacion.registrado === true } : undefined)
@@ -146,6 +148,7 @@ function Detalle({ paquete, navegacion }: { paquete: Paquete; navegacion: Estado
         />
         <Dato nombre="Última modificación" valor={formatearFechaHora(paquete.actualizadoEn)} />
       </dl>
+      {audita && <EnlaceAuditoria tabla="paquetes" registro={paquete.id} />}
 
       {accion === undefined && (recibir || pesar || preparar || programar || editar || cancelar) && (
         <div className="mt-6 flex flex-wrap gap-3">

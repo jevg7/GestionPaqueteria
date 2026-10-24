@@ -1,4 +1,5 @@
 import { createBrowserRouter, Navigate, Outlet, type RouteObject } from 'react-router'
+import { Auditoria } from './agencia/Auditoria.tsx'
 import { ClienteDetalle } from './agencia/ClienteDetalle.tsx'
 import { ClienteEditar } from './agencia/ClienteEditar.tsx'
 import { ClienteNuevo } from './agencia/ClienteNuevo.tsx'
@@ -121,6 +122,8 @@ const paginasDeSeccion: Partial<Record<string, RouteObject[]>> = {
       ),
     },
   ],
+  // Solo ADMIN: datos personales y financieros de todos los clientes.
+  auditoria: [{ index: true, Component: Auditoria }],
   usuarios: [
     { index: true, Component: UsuariosLista },
     { path: 'nuevo', Component: UsuarioNuevo },

@@ -39,6 +39,7 @@ export const permisos = {
   AdministrarUsuarios: ['ADMIN'],
   AdministrarFinanzas: ['ADMIN'],
   AdministrarConfiguracion: ['ADMIN'],
+  VerAuditoria: ['ADMIN'],
 } as const satisfies Record<string, readonly RolAgencia[]>
 
 export type Permiso = keyof typeof permisos
