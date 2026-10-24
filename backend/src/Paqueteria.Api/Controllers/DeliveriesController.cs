@@ -31,6 +31,16 @@ public sealed class DeliveriesController(EntregasService entregas) : ControllerB
     public async Task<ActionResult<DeliveryResponse>> Get(long id, CancellationToken cancellationToken) =>
         await entregas.ObtenerAsync(id, cancellationToken) is { } entrega ? entrega : NotFound();
 
+    /// <summary>
+    /// Los repartidores a los que se puede asignar una entrega (al programarla o al salir a ruta en su nombre). La lista de
+    /// usuarios es solo del ADMIN; esta la necesita también el AGENTE.
+    /// </summary>
+    [HttpGet("couriers")]
+    [Authorize(Roles = Permisos.ProgramarEntregas)]
+    [ProducesResponseType<IReadOnlyList<UserRef>>(StatusCodes.Status200OK)]
+    public Task<IReadOnlyList<UserRef>> Couriers(CancellationToken cancellationToken) =>
+        entregas.RepartidoresAsync(cancellationToken);
+
     /// <summary>Programa el delivery de paquetes LISTO_PARA_ENTREGA de un cliente (sin dirección, la del cliente).</summary>
     [HttpPost]
     [Authorize(Roles = Permisos.ProgramarEntregas)]

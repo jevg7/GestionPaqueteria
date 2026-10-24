@@ -9,7 +9,6 @@ import { instanteEnManagua } from '../lib/formato.ts'
 import { esquemaDeMotivo, fechaDelHecho, textoObligatorio, textoOpcional } from '../lib/validacion.ts'
 import { esMetodoDePago, monedas, type MetodoDePago, type Moneda, type Pago } from './facturas.ts'
 import { clavePaquetes, type Paquete } from './paquetes.ts'
-import { claveUsuarios, type Usuario } from './usuarios.ts'
 
 /** Ciclo de un delivery: PENDIENTE → EN_RUTA → ENTREGADA o FALLIDA; CANCELADA si no salió. Un retiro nace ENTREGADA. */
 export const estadosDeEntrega = ['PENDIENTE', 'EN_RUTA', 'ENTREGADA', 'FALLIDA', 'CANCELADA'] as const
@@ -98,11 +97,13 @@ export function opcionesPaquetesListosDelCliente(clienteId: number) {
   })
 }
 
-/** Los repartidores activos. Salen de /api/users, que solo puede pedir el ADMIN (permiso AdministrarUsuarios). */
+/** UserRef: un repartidor al que se le puede asignar una entrega. */
+export type Repartidor = { id: number; nombre: string }
+
+/** Los repartidores activos de la agencia (ProgramarEntregas: ADMIN y AGENTE), para asignar entregas. */
 export const opcionesRepartidores = queryOptions({
-  queryKey: [...claveUsuarios, 'repartidores'],
-  queryFn: async ({ signal }) =>
-    (await api.get<Pagina<Usuario>>('/api/users', { params: { rol: 'REPARTIDOR', activo: true, page: 1, pageSize: 100 }, signal })).items,
+  queryKey: [...claveEntregas, 'repartidores'],
+  queryFn: ({ signal }) => api.get<Repartidor[]>('/api/deliveries/couriers', { signal }),
   staleTime: 60_000,
 })
 

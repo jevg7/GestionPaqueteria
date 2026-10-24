@@ -87,22 +87,27 @@ public sealed class PaymentsController(FacturacionService facturacion) : Control
         await facturacion.AnularPagoAsync(id, request.Motivo, cancellationToken) is { } pago ? pago : NotFound();
 }
 
-/// <summary>Tipo de cambio diario (córdobas por dólar). Consultan ADMIN y AGENTE; solo ADMIN lo registra.</summary>
+/// <summary>
+/// Tipo de cambio diario (córdobas por dólar). El vigente lo consultan ADMIN, AGENTE y REPARTIDOR (cobra contra entrega);
+/// la lista, ADMIN y AGENTE; solo ADMIN lo registra. Cada acción declara su permiso: si el controller exigiera uno, se
+/// combinaría con Y con el de la acción.
+/// </summary>
 [ApiController]
 [Route("api/exchange-rates")]
-[Authorize(Roles = Permisos.Facturar)]
 [ProducesResponseType(StatusCodes.Status401Unauthorized)]
 [ProducesResponseType(StatusCodes.Status403Forbidden)]
 public sealed class ExchangeRatesController(TiposCambioService tiposCambio) : ControllerBase
 {
     /// <summary>Los últimos 60 registrados, del más reciente al más antiguo.</summary>
     [HttpGet]
+    [Authorize(Roles = Permisos.Facturar)]
     [ProducesResponseType<IReadOnlyList<ExchangeRateResponse>>(StatusCodes.Status200OK)]
     public Task<IReadOnlyList<ExchangeRateResponse>> List(CancellationToken cancellationToken) =>
         tiposCambio.ListarAsync(cancellationToken);
 
     /// <summary>El que se aplica hoy: el más reciente con fecha ≤ hoy en Managua. 404 si no hay ninguno.</summary>
     [HttpGet("current")]
+    [Authorize(Roles = Permisos.ConsultarTipoDeCambio)]
     [ProducesResponseType<ExchangeRateResponse>(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult<ExchangeRateResponse>> Current(CancellationToken cancellationToken) =>
