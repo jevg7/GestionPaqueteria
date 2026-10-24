@@ -62,3 +62,6 @@ export const formatearLibras = (valor: number) => `${formatearNumero(valor, 2, 2
 
 /** Un monto en dólares con sus 2 decimales. */
 export const formatearDolares = (valor: number) => `${formatearNumero(valor, 2, 2)} USD`
+
+/** Un monto en córdobas con sus 2 decimales, como lo escribe el backend: "C$ 576.83". */
+export const formatearCordobas = (valor: number) => `C$ ${formatearNumero(valor, 2, 2)}`

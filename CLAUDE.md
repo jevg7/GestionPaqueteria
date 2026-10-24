@@ -565,6 +565,12 @@ SPA con Vite. `src/main.tsx` monta `QueryClientProvider`, `SesionProvider` y `Ro
   escribe en hora de Managua con `<input type="datetime-local">` y viaja con su desfase (`instanteEnManagua`:
   "2026-10-20T08:30:00-06:00"), sin depender de la zona del equipo. Decimales escritos con punto
   (`decimalPositivo`); los grupos de casillas (roles) con `useController`, y `useWatch` en vez de `watch()`.
+  Una regla entre campos (`superRefine`) que deba verse junto con los errores de otros campos necesita `when`: Zod 4
+  la salta si otro campo ya tiene error.
+- **Dinero** (`lib/dinero.ts`): las vistas previas usan el redondeo de `CalculoMonto` (2 decimales, medios hacia
+  arriba) en enteros (BigInt): `productoRedondeado` (peso × tarifa, dólares → córdobas), `cocienteRedondeado`
+  (córdobas → dólares) y sumas y restas en centavos. Nunca sumar o comparar montos como `number` sin pasarlos a
+  centavos. El monto definitivo siempre lo da la API.
 - **Listas:** `useFiltrosDeLista` guarda filtros y página en la dirección con `flushSync`: si la actualización
   fuera una transición (lo normal en React Router), los campos mostrarían el valor viejo y al escribir rápido se
   perderían letras. La búsqueda sale al dejar de escribir (`useDiferido`) y la lista anterior se ve mientras
@@ -634,15 +640,24 @@ SPA con Vite. `src/main.tsx` monta `QueryClientProvider`, `SesionProvider` y `Ro
     con confirmación, cerrar (con paquetes), registrar salida y llegada (fecha opcional, nunca futura y la llegada no
     antes de la salida), editar llegada estimada y observaciones, y cancelar (sin paquetes). Lo que mueve paquetes
     invalida también la caché de paquetes; cancelar un paquete que estaba en un embarque invalida la de embarques.
+  - `/facturas` (`Facturar`: ADMIN y AGENTE; anular, `AdministrarFinanzas`: ADMIN): lista (más recientes primero)
+    con total, pagado y saldo, búsqueda por número y filtros por estado de pago y cliente. Emitir (`/facturas/nueva`):
+    se elige el cliente (también inactivos: sus paquetes en curso se cobran) y se ofrecen sus paquetes
+    PENDIENTE_DE_PAGO sin factura vigente, todos marcados, con el total; los que ya están en una factura con saldo se
+    muestran aparte con su enlace. La API no dice si un paquete está facturado: lo dicen las líneas de las facturas
+    PENDIENTE y PARCIAL del cliente (`opcionesFacturasConSaldo`). La ficha muestra líneas, pagos y saldo; el pago
+    (USD o NIO) llega con el saldo completo, al cambiar de moneda pasa a su equivalente exacto en córdobas
+    (`saldoEnMoneda`) y muestra lo que abona en dólares; sin tipo de cambio vigente no se reciben córdobas. Anular una
+    factura (sin pagos) o un pago pide motivo; la API responde 409 si un paquete ya pasó a entrega.
 - **Componentes compartidos** (`components/`): además de botones y campos, `AreaDeTexto` (varias líneas; `Dato`
   respeta los saltos de línea al mostrarlas), `EtiquetaActivo` y `campoDeFiltro` (`estilos.ts`) para las búsquedas
   y filtros de las listas.
 - **Pruebas:** Vitest (`npm test`), junto al código como `*.test.ts`: cliente de la API (simula `fetch` y la
   sesión), secciones y operaciones contra `Permisos.cs`, mensajes de Supabase, lectura del enlace de invitación,
   reglas de validación, errores por campo, fechas y los esquemas de agencias, usuarios, tarifas, tipo de cambio,
-  ubicaciones, clientes, paquetes y embarques; las acciones por estado contra `TransicionesPaquete.cs` y
-  `EmbarquesService.cs` (y los estados contra el enum `EstadoEmbarque`), y el monto estimado con los casos de
-  `CalculoMontoTests`.
+  ubicaciones, clientes, paquetes, embarques y facturas; las acciones por estado contra `TransicionesPaquete.cs` y
+  `EmbarquesService.cs`, los estados, métodos de pago y monedas contra los enums del backend, y el dinero con los casos
+  de `CalculoMontoTests` (incluido "pagar en córdobas el saldo convertido lo salda exacto", con 100 000 casos).
 - Imports con extensión (`./router.tsx`), como la plantilla de Vite; sin alias de rutas. Exportaciones con nombre.
 
 ## Seguridad
@@ -769,7 +784,8 @@ No implementar algo solo porque "podría ser útil".
   inicial en `main` (de ahí sale `develop`). `Claude stuff/` (copias v1 del esquema) quedó archivada fuera del workspace.
 - [ ] **Frontend (`frontend/`):** Fase 1 completa (Paso 2, 2026-10-20): base, cliente de la API, sesión, navegación
   por rol, panel de agencias y administración de la agencia. Fase 2 completa (Paso 3, 2026-10-21): clientes, paquetes
-  y embarques. Faltan la facturación, las entregas y la auditoría (Paso 4).
+  y embarques. Paso 4 en curso (rama `feature/frontend-fase-3`): facturación y pagos listos (2026-10-24); faltan las
+  entregas y la auditoría.
   La administración y la operación de la agencia no se han probado con una cuenta de empleado real: requiere que
   llegue la invitación (SMTP, ver abajo).
 - [ ] **Mejoras y decisiones abiertas:**
@@ -838,7 +854,7 @@ Con el backend, la base de datos y las credenciales de Supabase listos en `user-
 
 ### Paso 4 — Frontend Fase 3: Facturación, Caja, Entregas y Auditoría
 
-1. **Facturación y pagos (`/api/invoices`, `/api/payments`):**
+1. **Facturación y pagos (`/api/invoices`, `/api/payments`)** (completado el 2026-10-24):
    - Emisión de factura seleccionando los paquetes `PENDIENTE_DE_PAGO` de un cliente (`POST /api/invoices`).
    - Detalle de factura con líneas, pagos e indicadores de saldo; registro de pagos parciales o totales en `USD` o `NIO` mostrando el equivalente en córdobas según el tipo de cambio vigente (`POST /{id}/payments`).
    - Anulación de facturas y pagos con motivo (`POST /api/invoices/{id}/void`, `POST /api/payments/{id}/void`, solo `ADMIN`).

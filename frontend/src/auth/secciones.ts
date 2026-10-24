@@ -31,6 +31,7 @@ export const permisos = {
   EscribirClientes: ['ADMIN', 'AGENTE'],
   GestionarPaquetes: ['ADMIN', 'AGENTE'],
   OperarBodega: ['ADMIN', 'BODEGA'],
+  Facturar: ['ADMIN', 'AGENTE'],
   AdministrarFinanzas: ['ADMIN'],
   AdministrarConfiguracion: ['ADMIN'],
 } as const satisfies Record<string, readonly RolAgencia[]>

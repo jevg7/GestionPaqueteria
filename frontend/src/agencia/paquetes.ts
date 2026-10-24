@@ -3,6 +3,7 @@ import type { Path } from 'react-hook-form'
 import { z } from 'zod'
 import type { Tono } from '../components/Etiqueta.tsx'
 import { api, type Pagina } from '../lib/api.ts'
+import { productoRedondeado } from '../lib/dinero.ts'
 import { formatearDolares, formatearLibras, formatearNumero } from '../lib/formato.ts'
 import { decimalPositivo, textoOpcional } from '../lib/validacion.ts'
 import { referenciaDe, type ReferenciaCliente } from './clientes.ts'
@@ -128,15 +129,8 @@ export const tonosDeEstado: Record<EstadoPaquete, Tono> = {
   CANCELADO: 'rojo',
 }
 
-/**
- * round(peso × tarifa, 2) con los medios hacia arriba, como CalculoMonto.Calcular. Es la vista previa del pesaje: el
- * monto lo calcula la API. Se hace en enteros (centésimas de libra × diezmilésimas de dólar = millonésimas) para que
- * el punto flotante no cambie el redondeo de un medio (1.00 × 7.865 = 7.87).
- */
-export function montoEstimado(pesoLb: number, precioPorLibra: number): number {
-  const millonesimas = BigInt(Math.round(pesoLb * 100)) * BigInt(Math.round(precioPorLibra * 10_000))
-  return Number((millonesimas + 5_000n) / 10_000n) / 100
-}
+/** round(peso × tarifa, 2), como CalculoMonto.Calcular: la vista previa del pesaje (el monto lo calcula la API). */
+export const montoEstimado = (pesoLb: number, precioPorLibra: number) => productoRedondeado(pesoLb, precioPorLibra)
 
 /** "4.50 lb × 3.50 USD/lb = 15.75 USD", o null si todavía no se pesó. */
 export function textoDelCalculo({ pesoLb, tarifaAplicada, montoCalculado }: Paquete): string | null {

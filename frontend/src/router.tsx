@@ -6,6 +6,9 @@ import { ClientesLista } from './agencia/ClientesLista.tsx'
 import { EmbarqueDetalle } from './agencia/EmbarqueDetalle.tsx'
 import { EmbarqueNuevo } from './agencia/EmbarqueNuevo.tsx'
 import { EmbarquesLista } from './agencia/EmbarquesLista.tsx'
+import { FacturaDetalle } from './agencia/FacturaDetalle.tsx'
+import { FacturaNueva } from './agencia/FacturaNueva.tsx'
+import { FacturasLista } from './agencia/FacturasLista.tsx'
 import { PanelAgencia } from './agencia/PanelAgencia.tsx'
 import { PaqueteDetalle } from './agencia/PaqueteDetalle.tsx'
 import { PaqueteEditar } from './agencia/PaqueteEditar.tsx'
@@ -94,6 +97,12 @@ const paginasDeSeccion: Partial<Record<string, RouteObject[]>> = {
       ),
     },
     { path: ':id', Component: EmbarqueDetalle },
+  ],
+  // ADMIN y AGENTE emiten y cobran; anular facturas y pagos es solo del ADMIN (botones del detalle).
+  facturas: [
+    { index: true, Component: FacturasLista },
+    { path: 'nueva', Component: FacturaNueva },
+    { path: ':id', Component: FacturaDetalle },
   ],
   usuarios: [
     { index: true, Component: UsuariosLista },
