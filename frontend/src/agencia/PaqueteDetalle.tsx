@@ -1,16 +1,20 @@
-import { useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
 import { Link, useLocation } from 'react-router'
 import { usePermiso } from '../auth/identidad.ts'
 import { Aviso } from '../components/Aviso.tsx'
 import { Boton } from '../components/Boton.tsx'
+import { Confirmacion } from '../components/Confirmacion.tsx'
 import { Dato } from '../components/Dato.tsx'
 import { EnlaceBoton } from '../components/EnlaceBoton.tsx'
+import { mensajeDeError } from '../lib/errores.ts'
 import { formatearFechaHora } from '../lib/formato.ts'
 import { CancelarPaquete, Pesar, RecibirEnMiami } from './AccionesDePaquete.tsx'
 import { nombreDelCliente } from './clientes.ts'
 import { claveEmbarques } from './embarques.ts'
+import { prepararParaEntrega } from './entregas.ts'
 import { ConPaquete } from './ConPaquete.tsx'
+import { EnlaceAuditoria } from './EnlaceAuditoria.tsx'
 import { EtiquetaEstadoPaquete } from './EtiquetaEstadoPaquete.tsx'
 import { HistorialPaquete } from './HistorialPaquete.tsx'
 import {
@@ -20,6 +24,7 @@ import {
   opcionesPaquete,
   sePuedeCancelar,
   sePuedePesar,
+  sePuedePreparar,
   sePuedeRecibirEnMiami,
   textoDelCalculo,
   type Paquete,
@@ -28,7 +33,7 @@ import {
 /** Lo que trae la navegación: un aviso, si se acaba de registrar y los filtros de la lista de la que se vino. */
 type EstadoDeNavegacion = { aviso?: string; registrado?: boolean; lista?: string } | null
 
-type Accion = 'recibir' | 'pesar' | 'cancelar'
+type Accion = 'recibir' | 'pesar' | 'cancelar' | 'preparar'
 
 export function PaqueteDetalle() {
   const navegacion = useLocation().state as EstadoDeNavegacion
@@ -42,6 +47,9 @@ export function PaqueteDetalle() {
 function Detalle({ paquete, navegacion }: { paquete: Paquete; navegacion: EstadoDeNavegacion }) {
   const gestiona = usePermiso('GestionarPaquetes')
   const operaBodega = usePermiso('OperarBodega')
+  const preparaEntregas = usePermiso('PrepararEntrega')
+  const programaEntregas = usePermiso('ProgramarEntregas')
+  const audita = usePermiso('VerAuditoria')
   const queryClient = useQueryClient()
   // Recién registrado, el aviso ofrece registrar otro paquete para el mismo cliente (suelen avisar varios).
   const [aviso, setAviso] = useState(navegacion?.aviso ? { texto: navegacion.aviso, otro: navegacion.registrado === true } : undefined)
@@ -63,11 +71,18 @@ function Detalle({ paquete, navegacion }: { paquete: Paquete; navegacion: Estado
     setAviso({ texto, otro: false })
   }
   const propsDeAccion = { paquete, alTerminar: terminar, alVolver: () => setAccion(undefined) }
+  const preparacion = useMutation({
+    mutationFn: () => prepararParaEntrega(paquete.id),
+    onSuccess: (actualizado) =>
+      terminar(actualizado, `Paquete ${actualizado.codigoPaquete} listo para entrega: ya se puede programar su retiro o delivery.`),
+  })
 
   const recibir = operaBodega && sePuedeRecibirEnMiami(estado)
   const pesar = operaBodega && sePuedePesar(estado)
   const editar = gestiona && !esFinal(estado)
   const cancelar = gestiona && sePuedeCancelar(estado)
+  const preparar = preparaEntregas && sePuedePreparar(estado)
+  const programar = programaEntregas && estado === 'LISTO_PARA_ENTREGA'
 
   return (
     <section className="max-w-3xl">
@@ -133,10 +148,13 @@ function Detalle({ paquete, navegacion }: { paquete: Paquete; navegacion: Estado
         />
         <Dato nombre="Última modificación" valor={formatearFechaHora(paquete.actualizadoEn)} />
       </dl>
+      {audita && <EnlaceAuditoria tabla="paquetes" registro={paquete.id} />}
 
-      {accion === undefined && (recibir || pesar || editar || cancelar) && (
+      {accion === undefined && (recibir || pesar || preparar || programar || editar || cancelar) && (
         <div className="mt-6 flex flex-wrap gap-3">
           {recibir && <Boton onClick={() => abrir('recibir')}>Recibir en Miami</Boton>}
+          {preparar && <Boton onClick={() => abrir('preparar')}>Preparar para entrega</Boton>}
+          {programar && <EnlaceBoton to={`/entregas/nueva?cliente=${paquete.cliente.id}`}>Programar entrega</EnlaceBoton>}
           {pesar && <Boton onClick={() => abrir('pesar')}>{estado === 'PENDIENTE_DE_PAGO' ? 'Corregir peso' : 'Registrar peso'}</Boton>}
           {editar && (
             <EnlaceBoton to="editar" state={{ lista: navegacion?.lista }} variante="secundario">
@@ -159,6 +177,23 @@ function Detalle({ paquete, navegacion }: { paquete: Paquete; navegacion: Estado
           {accion === 'recibir' && <RecibirEnMiami {...propsDeAccion} />}
           {accion === 'pesar' && <Pesar {...propsDeAccion} />}
           {accion === 'cancelar' && <CancelarPaquete {...propsDeAccion} />}
+          {accion === 'preparar' && (
+            <Confirmacion
+              mensaje={
+                estado === 'PAGADO'
+                  ? `¿Marcar ${paquete.codigoPaquete} como listo para entrega? Queda disponible para retiro en agencia o delivery.`
+                  : `¿Marcar ${paquete.codigoPaquete} como listo para entrega sin estar pagado? Necesita su factura emitida: el saldo se cobra al entregarlo a domicilio, o en caja antes del retiro.`
+              }
+              textoConfirmar="Sí, está listo"
+              cargando={preparacion.isPending}
+              error={preparacion.isError ? mensajeDeError(preparacion.error) : undefined}
+              alConfirmar={() => preparacion.mutate()}
+              alCancelar={() => {
+                preparacion.reset()
+                setAccion(undefined)
+              }}
+            />
+          )}
         </div>
       )}
 

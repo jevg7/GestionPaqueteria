@@ -12,6 +12,7 @@ import { mensajeDeError } from '../lib/errores.ts'
 import { formatearFechaHora } from '../lib/formato.ts'
 import { activarCliente, claveClientes, desactivarCliente, nombreDelCliente, type Cliente } from './clientes.ts'
 import { ConCliente } from './ConCliente.tsx'
+import { EnlaceAuditoria } from './EnlaceAuditoria.tsx'
 
 /** Lo que trae la navegación: un aviso para mostrar y los filtros de la lista de la que se vino. */
 type EstadoDeNavegacion = { aviso?: string; lista?: string } | null
@@ -28,6 +29,8 @@ export function ClienteDetalle() {
 function Detalle({ cliente, navegacion }: { cliente: Cliente; navegacion: EstadoDeNavegacion }) {
   const puedeModificar = usePermiso('EscribirClientes')
   const registraPaquetes = usePermiso('GestionarPaquetes')
+  const factura = usePermiso('Facturar')
+  const audita = usePermiso('VerAuditoria')
   const nombre = nombreDelCliente(cliente)
   const queryClient = useQueryClient()
   const [aviso, setAviso] = useState(navegacion?.aviso)
@@ -70,6 +73,7 @@ function Detalle({ cliente, navegacion }: { cliente: Cliente; navegacion: Estado
         <Dato nombre="Registrado" valor={formatearFechaHora(cliente.fechaRegistro)} />
         <Dato nombre="Última modificación" valor={formatearFechaHora(cliente.actualizadoEn)} />
       </dl>
+      {audita && <EnlaceAuditoria tabla="clientes" registro={cliente.id} />}
 
       <div className="mt-6 flex flex-wrap gap-3">
         {registraPaquetes && cliente.activo && (
@@ -78,6 +82,11 @@ function Detalle({ cliente, navegacion }: { cliente: Cliente; navegacion: Estado
         <EnlaceBoton to={`/paquetes?cliente=${cliente.id}`} variante="secundario">
           Ver sus paquetes
         </EnlaceBoton>
+        {factura && (
+          <EnlaceBoton to={`/facturas?cliente=${cliente.id}`} variante="secundario">
+            Ver sus facturas
+          </EnlaceBoton>
+        )}
         {puedeModificar && (
           <EnlaceBoton to="editar" state={{ lista: navegacion?.lista }} variante="secundario">
             Editar datos

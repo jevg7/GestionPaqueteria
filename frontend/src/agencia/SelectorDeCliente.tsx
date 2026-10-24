@@ -20,20 +20,22 @@ type Props = {
   valor: ReferenciaCliente | null
   alCambiar: (cliente: ReferenciaCliente | null) => void
   error?: string
+  /**
+   * Solo clientes activos (por defecto): a uno desactivado no se le registran paquetes. Al facturar se ofrecen todos: un
+   * cliente desactivado conserva sus paquetes en curso, y esos se cobran.
+   */
+  soloActivos?: boolean
 }
 
-/**
- * Elige el cliente de un paquete buscándolo por nombre, código, teléfono o correo. Solo ofrece clientes activos: a uno
- * desactivado no se le registran paquetes (la API respondería 409).
- */
-export function SelectorDeCliente({ valor, alCambiar, error }: Props) {
+/** Elige un cliente buscándolo por nombre, código, teléfono o correo. */
+export function SelectorDeCliente({ valor, alCambiar, error, soloActivos = true }: Props) {
   const idCampo = useId()
   const [buscar, setBuscar] = useState('')
   const termino = useDiferido(buscar.trim())
   // Al pulsar "Cambiar cliente" el buscador vuelve a aparecer: el foco va a él.
   const enfocar = useRef(false)
   const resultados = useQuery({
-    ...opcionesListaClientes({ buscar: termino, activo: 'true', pagina: 1 }),
+    ...opcionesListaClientes({ buscar: termino, activo: soloActivos ? 'true' : '', pagina: 1 }),
     enabled: valor === null && termino.length >= 2,
   })
 
@@ -96,13 +98,17 @@ export function SelectorDeCliente({ valor, alCambiar, error }: Props) {
           </div>
         ) : resultados.data.items.length === 0 ? (
           <div className="mt-2 space-y-1 text-sm text-slate-600">
-            <p>
-              Ningún cliente activo coincide. Si es nuevo, regístrelo en{' '}
-              <Link to="/clientes/nuevo" className="font-medium text-blue-700 hover:underline">
-                Clientes
-              </Link>
-              : desde su ficha podrá registrar el paquete.
-            </p>
+            {soloActivos ? (
+              <p>
+                Ningún cliente activo coincide. Si es nuevo, regístrelo en{' '}
+                <Link to="/clientes/nuevo" className="font-medium text-blue-700 hover:underline">
+                  Clientes
+                </Link>
+                : desde su ficha podrá registrar el paquete.
+              </p>
+            ) : (
+              <p>Ningún cliente coincide.</p>
+            )}
             {tieneLetras(termino) && <p className="text-slate-500">{AVISO_DE_TILDES}</p>}
           </div>
         ) : (
@@ -115,7 +121,10 @@ export function SelectorDeCliente({ valor, alCambiar, error }: Props) {
                     onClick={() => alCambiar(referenciaDe(cliente))}
                     className="flex w-full flex-wrap items-center justify-between gap-x-3 px-3 py-2 text-left hover:bg-slate-50 focus-visible:outline-2 focus-visible:outline-blue-700"
                   >
-                    <span className="text-sm font-medium">{nombreDelCliente(cliente)}</span>
+                    <span className="text-sm font-medium">
+                      {nombreDelCliente(cliente)}
+                      {!cliente.activo && <span className="font-normal text-slate-500"> (inactivo)</span>}
+                    </span>
                     <span className="text-sm text-slate-500">
                       {cliente.codigoCliente} · {cliente.telefono}
                     </span>

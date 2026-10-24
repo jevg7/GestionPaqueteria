@@ -3,7 +3,8 @@ import type { Path } from 'react-hook-form'
 import { z } from 'zod'
 import type { Tono } from '../components/Etiqueta.tsx'
 import { api, type Pagina } from '../lib/api.ts'
-import { formatearDia, formatearFecha, formatearFechaHora, instanteEnManagua } from '../lib/formato.ts'
+import { formatearDia, formatearFecha, formatearFechaHora } from '../lib/formato.ts'
+import { fechaDelHecho } from '../lib/validacion.ts'
 import { clavePaquetes, type Paquete } from './paquetes.ts'
 
 /** Ciclo del embarque: ABIERTO → CERRADO → EN_TRANSITO → RECIBIDO; CANCELADO solo sin paquetes. */
@@ -159,27 +160,13 @@ export const datosDeEmbarque = (embarque: Embarque): FormularioEdicionEmbarque =
   observaciones: embarque.observaciones ?? '',
 })
 
-/** El margen de FechasDelNegocio para relojes desfasados. */
-const TOLERANCIA_DEL_RELOJ = 5 * 60_000
-
 /**
  * La fecha de salida o de llegada (ShipmentEventRequest), escrita en hora de Managua. Vacía es "ahora" (null); puede ser
  * pasada, nunca futura, y la llegada no puede ser anterior a la salida.
  */
 export function esquemaFechaDelHecho(hecho: 'salida' | 'llegada', salida: string | null = null, ahora = () => Date.now()) {
-  return z.object({
-    fecha: z
-      .string()
-      .transform((valor) => (valor ? instanteEnManagua(valor) : null))
-      .refine(
-        (instante) => instante === null || Date.parse(instante) <= ahora() + TOLERANCIA_DEL_RELOJ,
-        `La fecha de ${hecho} no puede ser futura.`,
-      )
-      .refine(
-        (instante) => instante === null || salida === null || Date.parse(instante) >= Date.parse(salida),
-        salida ? `La llegada no puede ser anterior a la salida (${formatearFechaHora(salida)}).` : undefined,
-      ),
-  })
+  const desde = salida ? { instante: salida, mensaje: `La llegada no puede ser anterior a la salida (${formatearFechaHora(salida)}).` } : undefined
+  return z.object({ fecha: fechaDelHecho(hecho, desde, ahora) })
 }
 
 export type FormularioFechaDelHecho = z.input<ReturnType<typeof esquemaFechaDelHecho>>

@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { instanteEnManagua } from './formato.ts'
 
 // Reglas de los formularios iguales a las del backend (DataAnnotations de los DTOs) y con sus mismos
 // mensajes: el formulario avisa antes de enviar y la API vuelve a comprobar todo.
@@ -51,6 +52,30 @@ export function diaObligatorio(mensajeVacio: string) {
 const telefonoValido = (valor: string) => valor === '' || PATRON_TELEFONO.test(valor)
 const TELEFONO_LARGO = 'El teléfono admite hasta 30 caracteres.'
 const TELEFONO_FORMATO = 'El teléfono solo admite dígitos, espacios, guiones, paréntesis y un + inicial.'
+
+/** El margen de FechasDelNegocio para relojes desfasados. */
+const TOLERANCIA_DEL_RELOJ = 5 * 60_000
+
+/**
+ * La fecha de un hecho que se puede registrar después (salida, llegada, entrega), escrita en hora de Managua con
+ * <input type="datetime-local">: vacía es "ahora" (null); puede ser pasada, nunca futura, como FechasDelNegocio.DelHecho.
+ * `desde`: el instante mínimo y su mensaje (la llegada no antes de la salida).
+ */
+export function fechaDelHecho(hecho: string, desde?: { instante: string; mensaje: string }, ahora = () => Date.now()) {
+  return z
+    .string()
+    .transform((valor) => (valor ? instanteEnManagua(valor) : null))
+    .refine(
+      (instante) => instante === null || Date.parse(instante) <= ahora() + TOLERANCIA_DEL_RELOJ,
+      `La fecha de ${hecho} no puede ser futura.`,
+    )
+    .refine((instante) => instante === null || !desde || Date.parse(instante) >= Date.parse(desde.instante), desde?.mensaje)
+}
+
+/** Un motivo obligatorio (anular, cancelar, marcar fallido), con el mensaje del DTO de la API. */
+export const esquemaDeMotivo = (mensajeVacio: string) => z.object({ motivo: z.string().trim().min(1, mensajeVacio) })
+
+export type DatosMotivo = z.output<ReturnType<typeof esquemaDeMotivo>>
 
 export const telefonoOpcional = z.string().trim().max(30, TELEFONO_LARGO).refine(telefonoValido, TELEFONO_FORMATO)
 

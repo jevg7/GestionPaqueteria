@@ -13,6 +13,7 @@ import {
   permiteCambiarClienteYMetodo,
   sePuedeCancelar,
   sePuedePesar,
+  sePuedePreparar,
   sePuedeRecibirEnMiami,
   textoDelCalculo,
   type Paquete,
@@ -146,6 +147,7 @@ describe('acciones por estado', () => {
     expect(estadosDePaquete.filter(sePuedeRecibirEnMiami)).toEqual(['REGISTRADO'])
     expect(estadosDePaquete.filter(sePuedePesar)).toEqual(['RECIBIDO_EN_NICARAGUA', 'PENDIENTE_DE_PAGO'])
     expect(estadosDePaquete.filter(permiteCambiarClienteYMetodo)).toEqual(['REGISTRADO', 'RECIBIDO_EN_MIAMI'])
+    expect(estadosDePaquete.filter(sePuedePreparar)).toEqual(['PENDIENTE_DE_PAGO', 'PAGADO'])
   })
 })
 
@@ -178,9 +180,10 @@ describe('las reglas coinciden con Services/TransicionesPaquete.cs', () => {
     )
   })
 
-  it('recibir en Miami y pesar son transiciones de la tabla', () => {
+  it('recibir en Miami, pesar y preparar para entrega son transiciones de la tabla', () => {
     expect(tabla.get('REGISTRADO')).toContain('RECIBIDO_EN_MIAMI')
     expect(tabla.get('RECIBIDO_EN_NICARAGUA')).toContain('PENDIENTE_DE_PAGO')
+    for (const estado of estadosDePaquete.filter(sePuedePreparar)) expect(tabla.get(estado)).toContain('LISTO_PARA_ENTREGA')
   })
 
   it('cliente y método cambian en los mismos estados que PermiteCambiarClienteYMetodo', () => {

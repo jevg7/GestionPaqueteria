@@ -39,7 +39,7 @@ Si un cambio contradice el modelo, detente y pregunta; no lo "arregles" en silen
 ```text
 paqueteria/
 ├── backend/        # ASP.NET Core Web API + tests (completo: flujo operativo + administración SaaS)
-├── frontend/       # React + TypeScript + Vite (administración y operación; faltan facturación, entregas y auditoría)
+├── frontend/       # React + TypeScript + Vite (completo: plataforma, administración, operación, caja, entregas, auditoría)
 ├── database/       # schema.sql (v2 congelado), seed.sql, tests/
 └── docs/
 ```
@@ -565,6 +565,12 @@ SPA con Vite. `src/main.tsx` monta `QueryClientProvider`, `SesionProvider` y `Ro
   escribe en hora de Managua con `<input type="datetime-local">` y viaja con su desfase (`instanteEnManagua`:
   "2026-10-20T08:30:00-06:00"), sin depender de la zona del equipo. Decimales escritos con punto
   (`decimalPositivo`); los grupos de casillas (roles) con `useController`, y `useWatch` en vez de `watch()`.
+  Una regla entre campos (`superRefine`) que deba verse junto con los errores de otros campos necesita `when`: Zod 4
+  la salta si otro campo ya tiene error.
+- **Dinero** (`lib/dinero.ts`): las vistas previas usan el redondeo de `CalculoMonto` (2 decimales, medios hacia
+  arriba) en enteros (BigInt): `productoRedondeado` (peso × tarifa, dólares → córdobas), `cocienteRedondeado`
+  (córdobas → dólares) y sumas y restas en centavos. Nunca sumar o comparar montos como `number` sin pasarlos a
+  centavos. El monto definitivo siempre lo da la API.
 - **Listas:** `useFiltrosDeLista` guarda filtros y página en la dirección con `flushSync`: si la actualización
   fuera una transición (lo normal en React Router), los campos mostrarían el valor viejo y al escribir rápido se
   perderían letras. La búsqueda sale al dejar de escribir (`useDiferido`) y la lista anterior se ve mientras
@@ -634,15 +640,43 @@ SPA con Vite. `src/main.tsx` monta `QueryClientProvider`, `SesionProvider` y `Ro
     con confirmación, cerrar (con paquetes), registrar salida y llegada (fecha opcional, nunca futura y la llegada no
     antes de la salida), editar llegada estimada y observaciones, y cancelar (sin paquetes). Lo que mueve paquetes
     invalida también la caché de paquetes; cancelar un paquete que estaba en un embarque invalida la de embarques.
+  - `/facturas` (`Facturar`: ADMIN y AGENTE; anular, `AdministrarFinanzas`: ADMIN): lista (más recientes primero)
+    con total, pagado y saldo, búsqueda por número y filtros por estado de pago y cliente. Emitir (`/facturas/nueva`):
+    se elige el cliente (también inactivos: sus paquetes en curso se cobran) y se ofrecen sus paquetes
+    PENDIENTE_DE_PAGO sin factura vigente, todos marcados, con el total; los que ya están en una factura con saldo se
+    muestran aparte con su enlace. La API no dice si un paquete está facturado: lo dicen las líneas de las facturas
+    PENDIENTE y PARCIAL del cliente (`opcionesFacturasConSaldo`). La ficha muestra líneas, pagos y saldo; el pago
+    (USD o NIO) llega con el saldo completo, al cambiar de moneda pasa a su equivalente exacto en córdobas
+    (`saldoEnMoneda`) y muestra lo que abona en dólares; sin tipo de cambio vigente no se reciben córdobas. Anular una
+    factura (sin pagos) o un pago pide motivo; la API responde 409 si un paquete ya pasó a entrega.
+  - `/entregas` (consultan todos; el REPARTIDOR recibe de la API solo las suyas y la página se llama "Mis entregas"):
+    las en curso (`EN_RUTA` y `PENDIENTE`, hasta 100 de cada una) agrupadas en visitas (`agruparEnVisitas`: mismo
+    cliente, estado, dirección y repartidor), con el teléfono para llamar y el cobro contra entrega (cada factura una
+    vez: `cobroDeLaVisita`). Acciones de `OperarReparto` (ADMIN, AGENTE, REPARTIDOR): salir a ruta, entregado (quién
+    recibe, fecha opcional y, si hay saldo, moneda y método del cobro; en córdobas, cada factura a su equivalente exacto)
+    y no se pudo entregar (motivo); de `ProgramarEntregas` (ADMIN, AGENTE): cancelar (motivo) y `/entregas/nueva`
+    (paquetes LISTO_PARA_ENTREGA del cliente sin delivery por salir; retiro en agencia solo con la factura saldada,
+    con enlace a la factura por cobrar; delivery con la dirección del cliente). `/entregas/historial`: todas, con
+    filtros. Qué acción se ofrece en cada estado (`estadoQuePermite`) y quién es "solo repartidor" (`esSoloRepartidor`)
+    se comparan con `EntregasService.cs`. La lista de repartidores sale de `/api/users`: solo el ADMIN la ve; el AGENTE
+    programa sin repartidor y no saca a ruta una entrega sin asignar (ver decisiones abiertas). En la ficha del paquete:
+    "Preparar para entrega" (`PrepararEntrega`, desde PAGADO o PENDIENTE_DE_PAGO con factura) y "Programar entrega".
+  - `/auditoria` (`VerAuditoria`: ADMIN): los cambios más recientes primero, con filtros por tabla, registro (con la
+    tabla, su historia), usuario, acción y rango de días (`inicioDelDia`/`finDelDia`, en hora de Managua; un rango al
+    revés no se consulta). Cada cambio muestra quién (o "Dueño de la plataforma" si el origen empieza con
+    `[plataforma`), el origen, la traza y sus campos con el nombre de la columna: en un UPDATE, antes y después; en un
+    alta o un borrado, sus valores plegados. Las fichas de cliente, paquete y factura enlazan a su auditoría
+    (`EnlaceAuditoria`). `tablasAuditadas` se compara con la lista de `schema.sql`.
 - **Componentes compartidos** (`components/`): además de botones y campos, `AreaDeTexto` (varias líneas; `Dato`
   respeta los saltos de línea al mostrarlas), `EtiquetaActivo` y `campoDeFiltro` (`estilos.ts`) para las búsquedas
   y filtros de las listas.
 - **Pruebas:** Vitest (`npm test`), junto al código como `*.test.ts`: cliente de la API (simula `fetch` y la
   sesión), secciones y operaciones contra `Permisos.cs`, mensajes de Supabase, lectura del enlace de invitación,
   reglas de validación, errores por campo, fechas y los esquemas de agencias, usuarios, tarifas, tipo de cambio,
-  ubicaciones, clientes, paquetes y embarques; las acciones por estado contra `TransicionesPaquete.cs` y
-  `EmbarquesService.cs` (y los estados contra el enum `EstadoEmbarque`), y el monto estimado con los casos de
-  `CalculoMontoTests`.
+  ubicaciones, clientes, paquetes, embarques, facturas y entregas; las acciones por estado contra
+  `TransicionesPaquete.cs`, `EmbarquesService.cs` y `EntregasService.cs`, los estados, tipos, métodos de pago, monedas y
+  acciones de auditoría contra los enums del backend, las tablas auditadas contra `schema.sql`, y el dinero con los casos
+  de `CalculoMontoTests` (incluido "pagar en córdobas el saldo convertido lo salda exacto", con 100 000 casos).
 - Imports con extensión (`./router.tsx`), como la plantilla de Vite; sin alias de rutas. Exportaciones con nombre.
 
 ## Seguridad
@@ -767,9 +801,9 @@ No implementar algo solo porque "podría ser útil".
 - [ ] **Segundo dueño de la plataforma (opcional cuando esté listo):** agregar `Plataforma:Propietarios:1` en `user-secrets` (el primero ya está configurado).
 - [x] **Repositorio Git (2026-10-18):** inicializado en esta carpeta con `.gitignore`, `.gitattributes` y el commit
   inicial en `main` (de ahí sale `develop`). `Claude stuff/` (copias v1 del esquema) quedó archivada fuera del workspace.
-- [ ] **Frontend (`frontend/`):** Fase 1 completa (Paso 2, 2026-10-20): base, cliente de la API, sesión, navegación
-  por rol, panel de agencias y administración de la agencia. Fase 2 completa (Paso 3, 2026-10-21): clientes, paquetes
-  y embarques. Faltan la facturación, las entregas y la auditoría (Paso 4).
+- [x] **Frontend (`frontend/`):** Fase 1 (Paso 2, 2026-10-20): base, cliente de la API, sesión, navegación por rol,
+  panel de agencias y administración de la agencia. Fase 2 (Paso 3, 2026-10-21): clientes, paquetes y embarques. Fase 3
+  (Paso 4, 2026-10-24): facturación y pagos, entregas y reparto, y auditoría. Cubre todos los endpoints del backend.
   La administración y la operación de la agencia no se han probado con una cuenta de empleado real: requiere que
   llegue la invitación (SMTP, ver abajo).
 - [ ] **Mejoras y decisiones abiertas:**
@@ -777,6 +811,13 @@ No implementar algo solo porque "podría ser útil".
   - Resolver preguntas abiertas de la sección 9 de `docs/modelo-datos.md` (tarifa marítima por libra o pie³,
     redondeo/mínimo de peso, paquetes sin aviso en Miami, cédula del cliente).
   - Búsqueda de clientes sin distinguir acentos (`unaccent` + migración).
+  - **Repartidores para el AGENTE:** la única lista de repartidores es `/api/users` (solo ADMIN). El agente programa
+    deliveries sin repartidor y no puede sacar a ruta uno sin asignar; el repartidor tampoco ve los sin asignar.
+    Propuesta: `GET /api/deliveries/couriers` (`ProgramarEntregas`) con los repartidores activos.
+  - **Tipo de cambio para el REPARTIDOR:** `GET /api/exchange-rates/current` es de `Facturar` (ADMIN, AGENTE). Al
+    cobrar contra entrega en córdobas, el repartidor no ve el monto en C$ antes de confirmar (lo calcula el backend).
+    Propuesta: permitirlo también a `OperarReparto`, o incluir el equivalente en córdobas en `PendingCharge`.
+  - Al corregir el peso, el monto se recalcula con la tarifa de hoy, no con la del primer pesaje: confirmar con la agencia.
   - Evaluar si se requieren permisos finos (`Permiso`/`RolPermiso`) y cuadre de caja del repartidor.
   - Definir `Cors:AllowedOrigins` y SMTP propio en Supabase para producción. Sin SMTP propio, Supabase solo
     envía correos a los miembros del equipo del proyecto (y 2 por hora): una invitación a otro correo falla con
@@ -836,17 +877,17 @@ Con el backend, la base de datos y las credenciales de Supabase listos en `user-
    - Listado con filtros, creación de embarque `ABIERTO`, asignación por lote (`POST /{id}/packages`) y retiro de paquetes (`POST /{id}/packages/{paqueteId}/remove`).
    - Acciones de ciclo de vida: cerrar (`/close`), registrar salida (`/depart`), registrar llegada a Nicaragua (`/arrive`) y cancelar (`/cancel`) (`ADMIN`, `BODEGA`; consulta `AGENTE`).
 
-### Paso 4 — Frontend Fase 3: Facturación, Caja, Entregas y Auditoría
+### Paso 4 — Frontend Fase 3: Facturación, Caja, Entregas y Auditoría (completado el 2026-10-24)
 
-1. **Facturación y pagos (`/api/invoices`, `/api/payments`):**
+1. **Facturación y pagos (`/api/invoices`, `/api/payments`)** (completado el 2026-10-24):
    - Emisión de factura seleccionando los paquetes `PENDIENTE_DE_PAGO` de un cliente (`POST /api/invoices`).
    - Detalle de factura con líneas, pagos e indicadores de saldo; registro de pagos parciales o totales en `USD` o `NIO` mostrando el equivalente en córdobas según el tipo de cambio vigente (`POST /{id}/payments`).
    - Anulación de facturas y pagos con motivo (`POST /api/invoices/{id}/void`, `POST /api/payments/{id}/void`, solo `ADMIN`).
-2. **Entregas y reparto (`/api/deliveries`, `POST /api/packages/{id}/ready`):**
+2. **Entregas y reparto (`/api/deliveries`, `POST /api/packages/{id}/ready`)** (completado el 2026-10-24):
    - Acción para marcar paquetes como `LISTO_PARA_ENTREGA` (`ADMIN`, `AGENTE`, `BODEGA`).
    - Registro de retiro en agencia agrupado (`POST /api/deliveries/pickup`) y programación/cancelación de deliveries (`POST /api/deliveries`, `POST /api/deliveries/cancel`) (`ADMIN`, `AGENTE`).
    - Vista operativa para `REPARTIDOR` (y `ADMIN`/`AGENTE` en su nombre): consultar entregas asignadas, salir a ruta (`/dispatch`), confirmar entrega (`/deliver`) incluyendo formulario de **cobro contra entrega** cuando `cobroPendiente > 0`, o reportar entrega fallida (`/fail`).
-3. **Auditoría (`/api/audit-logs`):**
+3. **Auditoría (`/api/audit-logs`)** (completado el 2026-10-24):
    - Pantalla exclusiva para `ADMIN` con filtros por tabla, `registroId`, usuario, acción y rango de fechas (`desde`/`hasta`), mostrando el diff entre `valoresAnteriores` y `valoresNuevos`.
 
 ### Paso 5 — Cierre de reglas abiertas y preparación para producción

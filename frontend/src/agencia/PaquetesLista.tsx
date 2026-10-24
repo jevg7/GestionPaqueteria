@@ -11,8 +11,9 @@ import { formatearFecha } from '../lib/formato.ts'
 import { useDiferido } from '../lib/useDiferido.ts'
 import { useFiltrosDeLista } from '../lib/useFiltrosDeLista.ts'
 import { opcionesCatalogos } from './catalogos.ts'
-import { nombreDelCliente, opcionesCliente } from './clientes.ts'
+import { nombreDelCliente } from './clientes.ts'
 import { EtiquetaEstadoPaquete } from './EtiquetaEstadoPaquete.tsx'
+import { FiltroDeCliente } from './FiltroDeCliente.tsx'
 import { estadosDePaquete, opcionesListaPaquetes, TAMANO_DE_PAGINA } from './paquetes.ts'
 
 /** Paquetes de la agencia, los más recientes primero: consultan ADMIN, AGENTE y BODEGA; registran ADMIN y AGENTE. */
@@ -68,7 +69,7 @@ export function PaquetesLista() {
           </select>
         </div>
       </div>
-      {clienteId && <FiltroDeCliente id={clienteId} alQuitar={() => cambiar('cliente', '')} />}
+      {clienteId && <FiltroDeCliente etiqueta="Paquetes de:" id={clienteId} alQuitar={() => cambiar('cliente', '')} />}
 
       <div className="mt-4">
         {lista.isPending ? (
@@ -118,26 +119,5 @@ export function PaquetesLista() {
         )}
       </div>
     </section>
-  )
-}
-
-/** "Paquetes de: María José Pérez (CLI-000001)", con el botón para quitar el filtro. */
-function FiltroDeCliente({ id, alQuitar }: { id: number; alQuitar: () => void }) {
-  const cliente = useQuery(opcionesCliente(id))
-  return (
-    <div className="mt-3 flex flex-wrap items-center gap-2 text-sm">
-      <span className="text-slate-600">Paquetes de:</span>
-      <span className="inline-flex items-center gap-1 rounded-full bg-blue-50 py-1 pr-1 pl-3 font-medium text-blue-800">
-        {cliente.data ? `${nombreDelCliente(cliente.data)} (${cliente.data.codigoCliente})` : `cliente ${id}`}
-        <button
-          type="button"
-          onClick={alQuitar}
-          aria-label="Quitar el filtro por cliente"
-          className="grid size-6 place-items-center rounded-full hover:bg-blue-100 focus-visible:outline-2 focus-visible:outline-blue-700"
-        >
-          ×
-        </button>
-      </span>
-    </div>
   )
 }

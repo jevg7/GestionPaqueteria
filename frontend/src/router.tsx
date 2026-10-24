@@ -1,4 +1,5 @@
 import { createBrowserRouter, Navigate, Outlet, type RouteObject } from 'react-router'
+import { Auditoria } from './agencia/Auditoria.tsx'
 import { ClienteDetalle } from './agencia/ClienteDetalle.tsx'
 import { ClienteEditar } from './agencia/ClienteEditar.tsx'
 import { ClienteNuevo } from './agencia/ClienteNuevo.tsx'
@@ -6,6 +7,12 @@ import { ClientesLista } from './agencia/ClientesLista.tsx'
 import { EmbarqueDetalle } from './agencia/EmbarqueDetalle.tsx'
 import { EmbarqueNuevo } from './agencia/EmbarqueNuevo.tsx'
 import { EmbarquesLista } from './agencia/EmbarquesLista.tsx'
+import { EntregaNueva } from './agencia/EntregaNueva.tsx'
+import { Entregas } from './agencia/Entregas.tsx'
+import { EntregasHistorial } from './agencia/EntregasHistorial.tsx'
+import { FacturaDetalle } from './agencia/FacturaDetalle.tsx'
+import { FacturaNueva } from './agencia/FacturaNueva.tsx'
+import { FacturasLista } from './agencia/FacturasLista.tsx'
 import { PanelAgencia } from './agencia/PanelAgencia.tsx'
 import { PaqueteDetalle } from './agencia/PaqueteDetalle.tsx'
 import { PaqueteEditar } from './agencia/PaqueteEditar.tsx'
@@ -95,6 +102,28 @@ const paginasDeSeccion: Partial<Record<string, RouteObject[]>> = {
     },
     { path: ':id', Component: EmbarqueDetalle },
   ],
+  // ADMIN y AGENTE emiten y cobran; anular facturas y pagos es solo del ADMIN (botones del detalle).
+  facturas: [
+    { index: true, Component: FacturasLista },
+    { path: 'nueva', Component: FacturaNueva },
+    { path: ':id', Component: FacturaDetalle },
+  ],
+  // Consultan todos (el REPARTIDOR, solo las suyas); programan ADMIN y AGENTE; salen a ruta y confirman ADMIN, AGENTE y
+  // REPARTIDOR (las acciones están en la página de entregas en curso).
+  entregas: [
+    { index: true, Component: Entregas },
+    { path: 'historial', Component: EntregasHistorial },
+    {
+      path: 'nueva',
+      element: (
+        <RequiereRoles roles={permisos.ProgramarEntregas}>
+          <EntregaNueva />
+        </RequiereRoles>
+      ),
+    },
+  ],
+  // Solo ADMIN: datos personales y financieros de todos los clientes.
+  auditoria: [{ index: true, Component: Auditoria }],
   usuarios: [
     { index: true, Component: UsuariosLista },
     { path: 'nuevo', Component: UsuarioNuevo },
