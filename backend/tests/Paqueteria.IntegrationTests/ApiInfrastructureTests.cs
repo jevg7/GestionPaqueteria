@@ -1,6 +1,7 @@
 using System.Net;
 using System.Text.Json;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -131,6 +132,30 @@ public class ApiInfrastructureTests
     }
 
     [Theory]
+    // Nginx en el mismo servidor (loopback): la API ve https y la IP del cliente.
+    [InlineData("127.0.0.1", "https", "203.0.113.7")]
+    // Cualquier otro origen podría falsificar las cabeceras: se ignoran.
+    [InlineData("198.51.100.9", "http", "198.51.100.9")]
+    public async Task SoloElProxyLocalFijaEsquemaEIpDelCliente(string remota, string esquema, string ip)
+    {
+        await using var factory = new ApiDePrueba();
+
+        var contexto = await factory.Server.SendAsync(c =>
+        {
+            c.Request.Method = HttpMethods.Get;
+            c.Request.Path = "/__test/request";
+            c.Request.Headers["X-Forwarded-Proto"] = "https";
+            c.Request.Headers["X-Forwarded-For"] = "203.0.113.7";
+            c.Connection.RemoteIpAddress = IPAddress.Parse(remota);
+        }, Ct);
+
+        Assert.Equal(StatusCodes.Status200OK, contexto.Response.StatusCode);
+        using var cuerpo = await JsonDocument.ParseAsync(contexto.Response.Body, cancellationToken: Ct);
+        Assert.Equal(esquema, cuerpo.RootElement.GetProperty("esquema").GetString());
+        Assert.Equal(ip, cuerpo.RootElement.GetProperty("ip").GetString());
+    }
+
+    [Theory]
     [InlineData("Development", 200)]
     // En Production no existen: como toda ruta sin endpoint, una solicitud anónima recibe 401
     // (política de autorización por defecto), no el documento.
@@ -222,6 +247,17 @@ public class ApiInfrastructureTests
         Assert.False(document.RootElement.TryGetProperty("detail", out _));
     }
 
+}
+
+// Solo en el host de tests: el esquema y la IP del cliente que ve la API (cabeceras reenviadas por Nginx).
+[ApiController]
+[AllowAnonymous]
+[Route("__test/request")]
+public sealed class RequestProbeController : ControllerBase
+{
+    [HttpGet]
+    public IActionResult Get() =>
+        Ok(new { esquema = Request.Scheme, ip = HttpContext.Connection.RemoteIpAddress?.ToString() });
 }
 
 // Este controller solo se carga en el host de tests. No agrega endpoints a la API publicada.

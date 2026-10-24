@@ -1,0 +1,36 @@
+# La API como servicio de systemd (docs/despliegue.md): /etc/systemd/system/paqueteria-api.service
+# Logs: journalctl -u paqueteria-api -f
+
+[Unit]
+Description=Paqueteria API (ASP.NET Core)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+WorkingDirectory=/opt/paqueteria/api
+ExecStart=/usr/bin/dotnet /opt/paqueteria/api/Paqueteria.Api.dll
+Restart=always
+RestartSec=5
+KillSignal=SIGINT
+SyslogIdentifier=paqueteria-api
+User=paqueteria
+Group=paqueteria
+
+# Solo Nginx (en este servidor) habla con la API.
+Environment=ASPNETCORE_ENVIRONMENT=Production
+Environment=ASPNETCORE_URLS=http://127.0.0.1:5000
+Environment=DOTNET_NOLOGO=1
+# Cadenas de conexión, Supabase, etc. (plantilla: deploy/api.env.example). Solo root lo lee.
+EnvironmentFile=/etc/paqueteria/api.env
+
+# La API no escribe archivos: el sistema queda de solo lectura para ella.
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+
+[Install]
+WantedBy=multi-user.target

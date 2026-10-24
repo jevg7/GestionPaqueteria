@@ -1,5 +1,6 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.Extensions.Options;
 using Microsoft.OpenApi;
 using Paqueteria.Api.Auth;
@@ -45,6 +46,10 @@ builder.Services.AddControllers().AddJsonOptions(options =>
 builder.Services.AddProblemDetails(options => options.CustomizeProblemDetails = context =>
     context.ProblemDetails.Extensions["traceId"] = context.HttpContext.TraceIdentifier);
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
+// En producción la API corre detrás de Nginx en el mismo servidor (docs/despliegue.md): así ve el esquema (https) y la
+// IP del cliente. Solo se aceptan esas cabeceras de loopback (KnownProxies por defecto), es decir, del Nginx local.
+builder.Services.Configure<ForwardedHeadersOptions>(options =>
+    options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto);
 builder.Services.AddCors(options => options.AddDefaultPolicy(policy =>
     policy.WithOrigins(allowedOrigins).AllowAnyHeader().AllowAnyMethod()));
 // JWT de Supabase Auth. Todo endpoint exige un empleado activo salvo los marcados AllowAnonymous.
@@ -122,6 +127,7 @@ if (!supabase.Configurado)
     app.Logger.LogWarning("Supabase:Url o Supabase:ServiceRoleKey no están configurados: no se pueden enviar invitaciones.");
 }
 
+app.UseForwardedHeaders();
 app.UseExceptionHandler();
 app.UseStatusCodePages();
 app.UseHttpsRedirection();
