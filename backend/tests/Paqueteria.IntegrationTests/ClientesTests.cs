@@ -125,12 +125,17 @@ public class ClientesTests(ServidorPostgres servidor) : PruebaHttpConBaseDeDatos
     [InlineData("lópez", "López")]
     [InlineData("LÓPEZ", "López")]
     [InlineData("maría lópez", "López")]
+    [InlineData("lopez", "López")]         // sin tildes por ambos lados (unaccent)
+    [InlineData("maria lopez", "López")]
+    [InlineData("PEREZ", "Pérez")]
+    [InlineData("rúiz", "Ruiz")]
     [InlineData("88880002", "Pérez")]      // teléfono guardado como "+505 8888-0002"
     [InlineData("8888 0003", "Ruiz")]      // teléfono guardado como "(505) 8888 0003"
     [InlineData("CLI-000003", "Ruiz")]
     [InlineData("jose@", "Pérez")]
     [InlineData("%", "")]                  // % y _ se buscan literales, no son comodines
     [InlineData("_", "")]
+    [InlineData("％", "")]                 // de ancho completo: unaccent lo vuelve %, que también va literal
     public async Task BuscaPorNombreTelefonoCorreoYCodigo(string busqueda, string apellidosEsperados)
     {
         using var agente = await ComoAsync(CodigosRol.Agente);

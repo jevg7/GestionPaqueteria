@@ -24,7 +24,7 @@ public class ModeloEsquemaTests(ServidorPostgres servidor) : PruebaConBaseDeDato
         "agencias.uq_agencias_nombre",          // único sobre lower(nombre)
         "usuarios_plataforma.uq_usuarios_plataforma_correo", // único sobre lower(correo)
         "clientes.ix_clientes_correo",          // lower(correo), parcial
-        "clientes.ix_clientes_nombre_trgm",     // GIN (nombres || ' ' || apellidos)
+        "clientes.ix_clientes_nombre_sin_tildes_trgm", // GIN fn_sin_tildes(nombres || ' ' || apellidos)
         "paquetes.uq_paquetes_tracking_vigente", // único sobre (agencia_id, upper(tracking_externo)), parcial
         "tarifas_envio.ex_tarifas_sin_traslape", // EXCLUDE USING gist
         "usuarios.uq_usuarios_correo",          // único sobre lower(correo)

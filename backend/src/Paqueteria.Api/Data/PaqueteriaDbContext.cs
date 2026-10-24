@@ -44,6 +44,23 @@ public class PaqueteriaDbContext(DbContextOptions<PaqueteriaDbContext> options) 
     public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
 
     /// <summary>
+    /// <c>paqueteria.fn_sin_tildes</c> (migración BusquedaSinTildes): el texto con <c>unaccent</c>, para buscar sin
+    /// distinguir acentos ("lopez" encuentra "López"). Solo se usa dentro de consultas LINQ, que la traducen a SQL.
+    /// </summary>
+    [DbFunction("fn_sin_tildes", Esquema)]
+    public static string SinTildes(string texto) =>
+        throw new InvalidOperationException($"{nameof(SinTildes)} solo se usa en consultas LINQ (se traduce a SQL).");
+
+    /// <summary>
+    /// <c>paqueteria.fn_patron_contiene_sin_tildes</c>: como <see cref="Services.Busqueda.PatronContiene"/>, pero sin
+    /// tildes, para comparar con <see cref="SinTildes"/> usando <see cref="Services.Busqueda.Escape"/>. Escapa después de
+    /// unaccent, que convierte "％" en "%". Solo dentro de consultas LINQ.
+    /// </summary>
+    [DbFunction("fn_patron_contiene_sin_tildes", Esquema)]
+    public static string PatronContieneSinTildes(string texto) =>
+        throw new InvalidOperationException($"{nameof(PatronContieneSinTildes)} solo se usa en consultas LINQ (se traduce a SQL).");
+
+    /// <summary>
     /// Configuración común de la API, de dotnet ef y de los tests: Npgsql, snake_case e
     /// historial de migraciones dentro del esquema <c>paqueteria</c>.
     /// </summary>

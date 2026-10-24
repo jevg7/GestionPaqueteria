@@ -281,6 +281,7 @@ public class UsuariosTests(ServidorPostgres servidor) : PruebaHttpConBaseDeDatos
         }
 
         Assert.Equal([ana.Id], await Ids(admin, "?search=ANA@"));
+        Assert.Equal([ana.Id, rafa.Id], await Ids(admin, "?search=ana perez")); // sin tildes: "Ana Pérez"
         Assert.Equal([rafa.Id], await Ids(admin, "?rol=repartidor"));
         Assert.DoesNotContain(rafa.Id, await Ids(admin, "?activo=true"));
         var roles = await admin.GetFromJsonAsync<List<RoleResponse>>("/api/users/roles", JsonApi.Opciones, Ct);

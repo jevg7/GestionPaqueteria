@@ -79,13 +79,6 @@ export function datosDeCliente(cliente: Cliente): DatosCliente {
   }
 }
 
-/**
- * La API distingue tildes al buscar (falta unaccent): si una búsqueda con letras no encuentra a nadie, se avisa,
- * para no registrar dos veces al mismo cliente.
- */
-export const AVISO_DE_TILDES = 'La búsqueda distingue tildes: pruebe también con o sin ellas (López / Lopez).'
-export const tieneLetras = (texto: string) => /\p{L}/u.test(texto)
-
 /** También sirve para el cliente que trae un paquete (ReferenciaCliente). */
 export const nombreDelCliente = (cliente: { nombres: string; apellidos: string }) => `${cliente.nombres} ${cliente.apellidos}`
 

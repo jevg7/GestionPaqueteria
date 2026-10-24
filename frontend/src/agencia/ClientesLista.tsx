@@ -10,14 +10,7 @@ import { campoDeFiltro } from '../components/estilos.ts'
 import { mensajeDeError } from '../lib/errores.ts'
 import { useDiferido } from '../lib/useDiferido.ts'
 import { useFiltrosDeLista } from '../lib/useFiltrosDeLista.ts'
-import {
-  AVISO_DE_TILDES,
-  nombreDelCliente,
-  opcionesListaClientes,
-  TAMANO_DE_PAGINA,
-  tieneLetras,
-  type FiltrosClientes,
-} from './clientes.ts'
+import { nombreDelCliente, opcionesListaClientes, TAMANO_DE_PAGINA, type FiltrosClientes } from './clientes.ts'
 
 const estados: { valor: FiltrosClientes['activo']; texto: string }[] = [
   { valor: '', texto: 'Todos' },
@@ -72,10 +65,9 @@ export function ClientesLista() {
             </Boton>
           </div>
         ) : lista.data.total === 0 ? (
-          <div className={`space-y-1 text-sm text-slate-600 ${lista.isPlaceholderData ? 'opacity-60' : ''}`}>
-            <p>{buscarDiferido || activo ? 'Ningún cliente coincide con la búsqueda.' : 'Todavía no hay clientes registrados.'}</p>
-            {tieneLetras(buscarDiferido) && <p className="text-slate-500">{AVISO_DE_TILDES}</p>}
-          </div>
+          <p className={`text-sm text-slate-600 ${lista.isPlaceholderData ? 'opacity-60' : ''}`}>
+            {buscarDiferido || activo ? 'Ningún cliente coincide con la búsqueda.' : 'Todavía no hay clientes registrados.'}
+          </p>
         ) : (
           <div className={`space-y-3 ${lista.isPlaceholderData ? 'opacity-60' : ''}`}>
             {lista.data.items.length > 0 && (

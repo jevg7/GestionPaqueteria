@@ -21,8 +21,8 @@ Antes de cambiar algo, lee lo que corresponda:
   (recurso embebido) y verifica su SHA-256; si el archivo cambia, la migración se niega a correr y falla
   el test `SchemaSqlSigueCongelado`. **No editarlo.** Todo cambio de esquema va en una migración nueva
   (`dotnet ef migrations add`), con `migrationBuilder.Sql(...)` para lo que EF no expresa.
-- `backend/src/Paqueteria.Api/Data/Migrations/` — cambios de esquema posteriores al baseline. Hoy solo
-  está `Baseline` (v2 ya incluye pagos en córdobas, `tipos_cambio` y auditoría). **Toda tabla nueva de
+- `backend/src/Paqueteria.Api/Data/Migrations/` — cambios de esquema posteriores al baseline: `Baseline` (v2 ya
+  incluye pagos en córdobas, `tipos_cambio` y auditoría) y `BusquedaSinTildes` (`unaccent`). **Toda tabla nueva de
   agencia debe llevar en su migración:** `agencia_id bigint not null default fn_agencia_actual()`, unique
   `(id, agencia_id)` y FK compuestas `(x_id, agencia_id)`, RLS con la política `pol_<tabla>_agencia`, el
   trigger de auditoría (`trg_<tabla>_auditoria … fn_auditar('id')`) y los de no borrado. Patrón: EF genera las
@@ -244,12 +244,17 @@ con el `DbContext`, DTOs con validación por atributos (errores 400 automáticos
   teléfono obligatorio (≤ 30; dígitos, espacios, `-`, `()` y `+` inicial), correo opcional con formato
   válido. Los textos se recortan; correo y dirección vacíos se guardan como `null`. El código lo asigna
   la BD. PUT no cambia el código ni el estado activo. Al editar gana la última escritura.
-- **Búsqueda:** `search` busca en nombre completo con `ILIKE` sobre `nombres || ' ' || apellidos`
-  (usa `ix_clientes_nombre_trgm`, verificado con `EXPLAIN`), en código y en correo. Si trae ≥ 4
-  dígitos, también en el teléfono comparando solo dígitos (`88880002` encuentra `+505 8888-0002`).
-  `%` y `_` se buscan literales. Orden: apellidos, nombres, id. `pageSize` entre 1 y 100.
-  No distingue mayúsculas, pero **sí acentos**: `lopez` no encuentra `López`. Resolverlo requiere la
-  extensión `unaccent` y un índice nuevo, es decir una migración.
+- **Búsqueda:** `search` busca en el nombre completo **sin distinguir mayúsculas ni tildes** (`lopez` encuentra
+  `López` y `rúiz` a `Ruiz`; la ñ cuenta como n), en código y en correo. Si trae ≥ 4 dígitos, también en el
+  teléfono comparando solo dígitos (`88880002` encuentra `+505 8888-0002`). `%` y `_` se buscan literales.
+  Orden: apellidos, nombres, id. `pageSize` entre 1 y 100.
+- **Sin tildes** (migración `BusquedaSinTildes`): `PaqueteriaDbContext.SinTildes` → `fn_sin_tildes` (`unaccent`
+  inmutable, para índices) sobre `nombres || ' ' || apellidos`, comparado con `PatronContieneSinTildes` →
+  `fn_patron_contiene_sin_tildes`, que escapa **después** de `unaccent` (este convierte `％ ＿ ＼` de ancho
+  completo en `% _ \`). En Supabase la extensión va en el esquema `extensions`; las funciones la llaman ya
+  resuelta, sin depender del `search_path`. El índice `ix_clientes_nombre_sin_tildes_trgm` sirve a la condición
+  del nombre sola (probado con `EXPLAIN`); con los `OR` de código, correo y teléfono, PostgreSQL recorre los
+  clientes de la agencia (medido: ~45 ms con 20 000). Si la base crece mucho, indexar también esas condiciones.
 - **Desactivar** solo impide registrarle paquetes nuevos (regla que aplicará el módulo de paquetes);
   sus paquetes en curso siguen su flujo. No hay DELETE.
 - **Auditoría:** quién registró o editó un cliente queda en `audit_logs` (trigger); el servicio
@@ -453,6 +458,7 @@ agencia; el correo de `usuarios` es único **en toda la plataforma** (una cuenta
 | `POST /{id}/deactivate` · `/activate` | Quita o devuelve el acceso de inmediato |
 | `POST /{id}/resend-invite` | Reenvía la invitación (409 si ya la aceptó o está desactivado) |
 
+- `search` busca en nombre completo (sin tildes, como clientes; sin índice) y correo.
 - Alta: INSERT primero (correo repetido → 409 sin invitar), luego la invitación, todo en una transacción:
   si Supabase falla, el usuario no queda creado. Correo en minúsculas. Roles: `ADMIN`, `AGENTE`, `BODEGA`,
   `REPARTIDOR` (otro → 400; al menos uno).
@@ -620,9 +626,8 @@ SPA con Vite. `src/main.tsx` monta `QueryClientProvider`, `SesionProvider` y `Ro
     invalida también `/api/catalogs`.
 - **Operación de la agencia** (`agencia/`, Paso 3):
   - `/clientes` (consultan ADMIN, AGENTE y BODEGA; `EscribirClientes`: ADMIN y AGENTE): lista con búsqueda (nombre,
-    código, correo y teléfono por dígitos) y estado, alta (el código `CLI-` lo pone la BD), ficha y edición, y
-    desactivar o activar con confirmación. Sin resultados y con letras en la búsqueda, avisa que distingue tildes
-    (falta `unaccent`; `AVISO_DE_TILDES`): así no se registra dos veces al mismo cliente. Su ficha lleva a "Ver sus
+    código, correo y teléfono por dígitos; sin distinguir tildes) y estado, alta (el código `CLI-` lo pone la BD),
+    ficha y edición, y desactivar o activar con confirmación. Su ficha lleva a "Ver sus
     paquetes" (`/paquetes?cliente=<id>`) y a "Registrar paquete" con el cliente ya elegido.
   - `/paquetes` (consultan ADMIN, AGENTE y BODEGA): lista (más recientes primero) con búsqueda por código, tracking o
     descripción y filtros por estado, método y cliente (este último con su nombre y un botón para quitarlo). Registro
@@ -816,7 +821,6 @@ No implementar algo solo porque "podría ser útil".
   - Confirmar con la agencia/contador que la tarifa incluye IVA (`impuestos = 0`).
   - Resolver preguntas abiertas de la sección 9 de `docs/modelo-datos.md` (tarifa marítima por libra o pie³,
     redondeo/mínimo de peso, paquetes sin aviso en Miami, cédula del cliente).
-  - Búsqueda de clientes sin distinguir acentos (`unaccent` + migración).
   - Al corregir el peso, el monto se recalcula con la tarifa de hoy, no con la del primer pesaje: confirmar con la agencia.
   - Evaluar si se requieren permisos finos (`Permiso`/`RolPermiso`) y cuadre de caja del repartidor.
   - Definir `Cors:AllowedOrigins` y SMTP propio en Supabase para producción. Sin SMTP propio, Supabase solo

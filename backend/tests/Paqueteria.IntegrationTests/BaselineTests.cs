@@ -20,7 +20,8 @@ public class BaselineTests(ServidorPostgres servidor)
 
         await using (var db = baseDeDatos.CrearContextoDueno())
         {
-            Assert.Equal(["20260930001535_Baseline"], await db.Database.GetAppliedMigrationsAsync(Ct));
+            Assert.Equal(db.Database.GetMigrations(), await db.Database.GetAppliedMigrationsAsync(Ct));
+            Assert.Equal("20260930001535_Baseline", db.Database.GetMigrations().First());
             Assert.Empty(await db.Database.GetPendingMigrationsAsync(Ct));
         }
 

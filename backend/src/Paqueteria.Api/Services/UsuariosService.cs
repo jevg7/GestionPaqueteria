@@ -47,8 +47,9 @@ public sealed class UsuariosService(
         if (!string.IsNullOrEmpty(termino))
         {
             var patron = Busqueda.PatronContiene(termino);
+            // Sin tildes, como la de clientes (sin índice: una agencia tiene pocos empleados).
             consulta = consulta.Where(u =>
-                EF.Functions.ILike(u.Nombres + " " + u.Apellidos, patron, Busqueda.Escape) ||
+                EF.Functions.ILike(PaqueteriaDbContext.SinTildes(u.Nombres + " " + u.Apellidos), PaqueteriaDbContext.PatronContieneSinTildes(termino), Busqueda.Escape) ||
                 EF.Functions.ILike(u.Correo, patron, Busqueda.Escape));
         }
 

@@ -35,11 +35,13 @@ public sealed class ClientesService(PaqueteriaDbContext db, UsuarioActual usuari
             var patron = Busqueda.PatronContiene(termino);
             var digitos = Regex.Replace(termino, "[^0-9]", "");
 
-            // "nombres || ' ' || apellidos" es la expresión del índice de trigramas ix_clientes_nombre_trgm.
+            // El nombre se compara sin tildes por ambos lados ("lopez" encuentra "López" y "rúiz" a "Ruiz").
+            // fn_sin_tildes(nombres || ' ' || apellidos) es la expresión del índice ix_clientes_nombre_sin_tildes_trgm,
+            // que sirve a esta condición sola; con los OR (código, correo, teléfono) se recorren los de la agencia.
             // El teléfono se compara solo por dígitos: "8888-0001" encuentra "+505 8888 0001".
             consulta = digitos.Length >= 4
                 ? consulta.Where(c =>
-                    EF.Functions.ILike(c.Nombres + " " + c.Apellidos, patron, Busqueda.Escape) ||
+                    EF.Functions.ILike(PaqueteriaDbContext.SinTildes(c.Nombres + " " + c.Apellidos), PaqueteriaDbContext.PatronContieneSinTildes(termino), Busqueda.Escape) ||
                     EF.Functions.ILike(c.CodigoCliente, patron, Busqueda.Escape) ||
                     EF.Functions.ILike(c.Correo!, patron, Busqueda.Escape) ||
                     // Replace encadenados (los caracteres que admite la validación): Npgsql traduce
@@ -47,7 +49,7 @@ public sealed class ClientesService(PaqueteriaDbContext db, UsuarioActual usuari
                     c.Telefono.Replace(" ", "").Replace("-", "").Replace("(", "").Replace(")", "").Replace("+", "")
                         .Contains(digitos))
                 : consulta.Where(c =>
-                    EF.Functions.ILike(c.Nombres + " " + c.Apellidos, patron, Busqueda.Escape) ||
+                    EF.Functions.ILike(PaqueteriaDbContext.SinTildes(c.Nombres + " " + c.Apellidos), PaqueteriaDbContext.PatronContieneSinTildes(termino), Busqueda.Escape) ||
                     EF.Functions.ILike(c.CodigoCliente, patron, Busqueda.Escape) ||
                     EF.Functions.ILike(c.Correo!, patron, Busqueda.Escape));
         }

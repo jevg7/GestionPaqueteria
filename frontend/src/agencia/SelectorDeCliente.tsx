@@ -5,14 +5,7 @@ import { Aviso } from '../components/Aviso.tsx'
 import { Boton } from '../components/Boton.tsx'
 import { mensajeDeError } from '../lib/errores.ts'
 import { useDiferido } from '../lib/useDiferido.ts'
-import {
-  AVISO_DE_TILDES,
-  nombreDelCliente,
-  opcionesListaClientes,
-  referenciaDe,
-  tieneLetras,
-  type ReferenciaCliente,
-} from './clientes.ts'
+import { nombreDelCliente, opcionesListaClientes, referenciaDe, type ReferenciaCliente } from './clientes.ts'
 
 const RESULTADOS_A_LA_VISTA = 8
 
@@ -97,7 +90,7 @@ export function SelectorDeCliente({ valor, alCambiar, error, soloActivos = true 
             <Aviso tipo="error">{mensajeDeError(resultados.error)}</Aviso>
           </div>
         ) : resultados.data.items.length === 0 ? (
-          <div className="mt-2 space-y-1 text-sm text-slate-600">
+          <div className="mt-2 text-sm text-slate-600">
             {soloActivos ? (
               <p>
                 Ningún cliente activo coincide. Si es nuevo, regístrelo en{' '}
@@ -109,7 +102,6 @@ export function SelectorDeCliente({ valor, alCambiar, error, soloActivos = true 
             ) : (
               <p>Ningún cliente coincide.</p>
             )}
-            {tieneLetras(termino) && <p className="text-slate-500">{AVISO_DE_TILDES}</p>}
           </div>
         ) : (
           <div className={`mt-2 ${resultados.isPlaceholderData ? 'opacity-60' : ''}`}>
