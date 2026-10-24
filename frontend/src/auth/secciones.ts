@@ -35,8 +35,6 @@ export const permisos = {
   PrepararEntrega: ['ADMIN', 'AGENTE', 'BODEGA'],
   ProgramarEntregas: ['ADMIN', 'AGENTE'],
   OperarReparto: ['ADMIN', 'AGENTE', 'REPARTIDOR'],
-  // /api/users: con él se elige el repartidor de una entrega (la API no ofrece otra lista de repartidores).
-  AdministrarUsuarios: ['ADMIN'],
   AdministrarFinanzas: ['ADMIN'],
   AdministrarConfiguracion: ['ADMIN'],
   VerAuditoria: ['ADMIN'],

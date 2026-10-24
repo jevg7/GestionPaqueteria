@@ -329,7 +329,50 @@ public class EntregasTests(ServidorPostgres servidor) : PruebaHttpConBaseDeDatos
             HttpStatusCode.Conflict, "tiene saldo pendiente");
     }
 
+    [Fact]
+    public async Task LosRepartidoresQueSePuedenAsignarSonLosActivosDeLaAgencia()
+    {
+        using var admin = await ComoAsync(CodigosRol.Admin);
+        using var agente = await ComoAsync(CodigosRol.Agente);
+        var (_, pedro) = await RepartidorAsync();
+        var (_, lucia) = await RepartidorAsync();
+        await NombrarAsync(pedro, "Pedro", "Gómez");
+        await NombrarAsync(lucia, "Lucía", "Díaz");
+        await CrearEmpleadoAsync(activo: false, roles: [CodigosRol.Repartidor]); // inactivo: no recibe entregas
+        await ComoAsync(CodigosRol.Bodega);                                      // otro rol
+        await ComoEnAgenciaAsync(await CrearAgenciaAsync("Otra agencia"), CodigosRol.Repartidor);
+
+        foreach (var client in new[] { admin, agente })
+        {
+            var repartidores = await GetAsync<List<UserRef>>(client, "/api/deliveries/couriers");
+            Assert.Equal([new UserRef(lucia, "Lucía Díaz"), new UserRef(pedro, "Pedro Gómez")], repartidores);
+        }
+    }
+
+    /// <summary>Cobrar contra entrega en córdobas: el repartidor debe saber el monto en C$ antes de confirmar.</summary>
+    [Fact]
+    public async Task ElRepartidorConsultaElTipoDeCambioVigentePeroNoLoRegistra()
+    {
+        using var admin = await ComoAsync(CodigosRol.Admin);
+        using var bodega = await ComoAsync(CodigosRol.Bodega);
+        var (repartidor, _) = await RepartidorAsync();
+        await PutAsync(admin, $"/api/exchange-rates/{Hoy:yyyy-MM-dd}", new { nioPorUsd = 36.6243m });
+
+        Assert.Equal(36.6243m, (await GetAsync<ExchangeRateResponse>(repartidor, "/api/exchange-rates/current")).NioPorUsd);
+
+        // Solo el vigente: la lista es de caja (ADMIN y AGENTE) y el registro, del ADMIN.
+        using var lista = await repartidor.GetAsync("/api/exchange-rates", Ct);
+        using var registro = await repartidor.PutAsJsonAsync($"/api/exchange-rates/{Hoy:yyyy-MM-dd}", new { nioPorUsd = 40m }, Ct);
+        using var deBodega = await bodega.GetAsync("/api/exchange-rates/current", Ct);
+        Assert.Equal(HttpStatusCode.Forbidden, lista.StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, registro.StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, deBodega.StatusCode);
+    }
+
     [Theory]
+    [InlineData(CodigosRol.Agente, "repartidores", HttpStatusCode.OK)]
+    [InlineData(CodigosRol.Bodega, "repartidores", HttpStatusCode.Forbidden)]
+    [InlineData(CodigosRol.Repartidor, "repartidores", HttpStatusCode.Forbidden)]
     [InlineData(CodigosRol.Bodega, "preparar", HttpStatusCode.OK)]
     [InlineData(CodigosRol.Repartidor, "preparar", HttpStatusCode.Forbidden)]
     [InlineData(CodigosRol.Bodega, "programar", HttpStatusCode.Forbidden)]
@@ -348,6 +391,7 @@ public class EntregasTests(ServidorPostgres servidor) : PruebaHttpConBaseDeDatos
 
         using var response = operacion switch
         {
+            "repartidores" => await client.GetAsync("/api/deliveries/couriers", Ct),
             "preparar" => await client.PostAsync($"/api/packages/{paquete.Id}/ready", null, Ct),
             "programar" => await client.PostAsJsonAsync("/api/deliveries", new { paqueteIds = new[] { paquete.Id } }, Ct),
             "retiro" => await client.PostAsJsonAsync("/api/deliveries/pickup", new { paqueteIds = new[] { paquete.Id }, personaRecibe = "X" }, Ct),
@@ -378,6 +422,16 @@ public class EntregasTests(ServidorPostgres servidor) : PruebaHttpConBaseDeDatos
     }
 
     private Task<(HttpClient Client, long UsuarioId)> RepartidorAsync() => EmpleadoAsync(CodigosRol.Repartidor);
+
+    /// <summary>Los empleados de prueba se llaman todos igual; para comparar listas por nombre se les pone uno propio.</summary>
+    private async Task NombrarAsync(long usuarioId, string nombres, string apellidos)
+    {
+        await using var db = NuevoContexto();
+        var usuario = await db.Usuarios.SingleAsync(u => u.Id == usuarioId, Ct);
+        usuario.Nombres = nombres;
+        usuario.Apellidos = apellidos;
+        await db.SaveChangesAsync(Ct);
+    }
 
     private static async Task<PackageResponse> RegistrarAsync(HttpClient agente, long clienteId) =>
         (await PostAsync<PackageResponse>(agente, "/api/packages",

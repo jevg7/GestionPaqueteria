@@ -25,6 +25,12 @@ public static class Permisos
     /// <summary>Anular facturas y pagos, y registrar el tipo de cambio: control financiero del administrador.</summary>
     public const string AdministrarFinanzas = CodigosRol.Admin;
 
+    /// <summary>
+    /// El tipo de cambio vigente: AGENTE cobra en caja y el REPARTIDOR cobra contra entrega en córdobas (debe saber el
+    /// monto antes de confirmar). La lista de los últimos sigue siendo de <see cref="Facturar"/>.
+    /// </summary>
+    public const string ConsultarTipoDeCambio = CodigosRol.Admin + "," + CodigosRol.Agente + "," + CodigosRol.Repartidor;
+
     /// <summary>Consultar la auditoría: contiene datos personales y financieros de todos los clientes.</summary>
     public const string VerAuditoria = CodigosRol.Admin;
 

@@ -3,7 +3,6 @@ import { useMutation, useQueries, useQuery, useQueryClient } from '@tanstack/rea
 import { useMemo, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { Link, useNavigate, useSearchParams } from 'react-router'
-import { usePermiso } from '../auth/identidad.ts'
 import { AreaDeTexto } from '../components/AreaDeTexto.tsx'
 import { Aviso } from '../components/Aviso.tsx'
 import { Boton } from '../components/Boton.tsx'
@@ -35,7 +34,6 @@ import {
 import { facturadosEn, opcionesFacturasConSaldo, type Factura } from './facturas.ts'
 import { clavePaquetes } from './paquetes.ts'
 import { SelectorDeCliente } from './SelectorDeCliente.tsx'
-import { nombreDelUsuario } from './usuarios.ts'
 
 const ENTREGAS = '/entregas'
 
@@ -289,12 +287,11 @@ function Retiro({ cliente, paqueteIds, porCobrar }: PropsDeEntrega) {
   )
 }
 
-/** Delivery a domicilio: queda por salir. El repartidor es opcional; lo elige el ADMIN (la lista de repartidores es suya). */
+/** Delivery a domicilio: queda por salir. El repartidor es opcional al programar (se puede elegir al salir a ruta). */
 function Delivery({ cliente, direccion, paqueteIds, porCobrar }: PropsDeEntrega & { direccion: string }) {
   const navegar = useNavigate()
   const queryClient = useQueryClient()
-  const eligeRepartidor = usePermiso('AdministrarUsuarios')
-  const repartidores = useQuery({ ...opcionesRepartidores, enabled: eligeRepartidor })
+  const repartidores = useQuery(opcionesRepartidores)
   const [errorGeneral, setErrorGeneral] = useState<string>()
   const {
     register,
@@ -341,18 +338,14 @@ function Delivery({ cliente, direccion, paqueteIds, porCobrar }: PropsDeEntrega 
       />
       <div className="grid gap-4 sm:grid-cols-2">
         <Campo etiqueta="Fecha y hora programadas (opcional)" type="datetime-local" error={errors.fechaProgramada?.message} {...register('fechaProgramada')} />
-        {eligeRepartidor ? (
-          <Seleccion etiqueta="Repartidor (opcional)" error={errors.responsableUsuarioId?.message} {...register('responsableUsuarioId')}>
-            <option value="">{repartidores.isPending ? 'Cargando…' : 'Sin asignar todavía'}</option>
-            {repartidores.data?.map((repartidor) => (
-              <option key={repartidor.id} value={repartidor.id}>
-                {nombreDelUsuario(repartidor)}
-              </option>
-            ))}
-          </Seleccion>
-        ) : (
-          <p className="self-end text-sm text-slate-500">Sin repartidor: un administrador lo asigna al salir a ruta.</p>
-        )}
+        <Seleccion etiqueta="Repartidor (opcional)" error={errors.responsableUsuarioId?.message} {...register('responsableUsuarioId')}>
+          <option value="">{repartidores.isPending ? 'Cargando…' : 'Sin asignar todavía'}</option>
+          {repartidores.data?.map((repartidor) => (
+            <option key={repartidor.id} value={repartidor.id}>
+              {repartidor.nombre}
+            </option>
+          ))}
+        </Seleccion>
       </div>
       <AreaDeTexto etiqueta="Observaciones (opcional)" rows={2} {...register('observaciones')} />
       {errorGeneral && <Aviso tipo="error">{errorGeneral}</Aviso>}

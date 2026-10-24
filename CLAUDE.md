@@ -340,7 +340,8 @@ Ciclo: `ABIERTO` → `CERRADO` → `EN_TRANSITO` → `RECIBIDO`; `CANCELADO` sol
 | `POST /api/invoices/{id}/payments` `{ moneda, monto, metodoPago, referencia? }` | ADMIN, AGENTE | Pago en `USD` o `NIO`; si salda, paquetes → `PAGADO` |
 | `POST /api/invoices/{id}/void` `{ motivo }` | ADMIN | `EMITIDA → ANULADA` sin pagos aplicados; los paquetes se pueden refacturar |
 | `POST /api/payments/{id}/void` `{ motivo }` | ADMIN | `APLICADO → ANULADO`; si la factura estaba saldada, paquetes `PAGADO → PENDIENTE_DE_PAGO` (409 si alguno ya pasó a entrega) |
-| `GET /api/exchange-rates` · `GET /api/exchange-rates/current` | ADMIN, AGENTE | Últimos 60 · el vigente (404 si no hay) |
+| `GET /api/exchange-rates` | ADMIN, AGENTE | Últimos 60 |
+| `GET /api/exchange-rates/current` | ADMIN, AGENTE, REPARTIDOR | El vigente (404 si no hay); el repartidor lo necesita para cobrar en córdobas (`ConsultarTipoDeCambio`) |
 | `PUT /api/exchange-rates/{yyyy-MM-dd}` `{ nioPorUsd }` | ADMIN | Registra o corrige el de un día (puede ser futuro) |
 
 - **Córdobas:** el pago guarda `moneda`, `monto_moneda` (córdobas) y copia del `tipo_cambio_aplicado`;
@@ -371,6 +372,7 @@ varios (una visita: mismo cliente). Con **pago contra entrega** (sección 6 del 
 |---|---|---|
 | `POST /api/packages/{id}/ready` | ADMIN, AGENTE, BODEGA | → `LISTO_PARA_ENTREGA` desde `PAGADO`, o desde `PENDIENTE_DE_PAGO` con factura emitida |
 | `GET /api/deliveries?estado=&tipoEntrega=&clienteId=&paqueteId=&responsableUsuarioId=` · `GET /{id}` | todos | Con `cobroPendiente`; un REPARTIDOR solo ve las suyas |
+| `GET /api/deliveries/couriers` | ADMIN, AGENTE | Los repartidores asignables (usuario y rol activos), por nombre |
 | `POST /api/deliveries` `{ paqueteIds, direccion?, fechaProgramada?, responsableUsuarioId?, observaciones? }` | ADMIN, AGENTE | Programa delivery `PENDIENTE` (sin dirección: la del cliente) |
 | `POST /api/deliveries/pickup` `{ paqueteIds, personaRecibe, fecha? }` | ADMIN, AGENTE | Retiro en agencia: `ENTREGADA` y paquetes `ENTREGADO`; exige factura saldada |
 | `POST /api/deliveries/dispatch` `{ entregaIds, responsableUsuarioId? }` | ADMIN, AGENTE, REPARTIDOR | `PENDIENTE → EN_RUTA`, paquetes → `EN_REPARTO`; un repartidor sale con las suyas |
@@ -386,7 +388,8 @@ varios (una visita: mismo cliente). Con **pago contra entrega** (sección 6 del 
 - **Repartidor:** solo ve las entregas asignadas a él (las demás responden 404 / "no existen"); puede
   tomar entregas `PENDIENTE` sin asignar al salir a ruta; 403 si intenta salir a nombre de otro. AGENTE
   y ADMIN operan en su nombre (p. ej. confirman por teléfono). El responsable debe ser un usuario activo
-  con rol REPARTIDOR activo.
+  con rol REPARTIDOR activo: los que lista `/couriers` (`EntregasService.RepartidoresAsync`, la misma regla que
+  `ValidarRepartidorAsync`).
 - **Un intento vigente por paquete** (`PENDIENTE`/`EN_RUTA`/`ENTREGADA`); fallida o cancelada liberan
   el paquete para otro intento. Motivos de fallo y cancelación se agregan a `observaciones`.
 - **Bloqueo:** orden global facturas → paquetes → entregas. `AccesoDenegadoException` → 403 con motivo.
@@ -658,8 +661,9 @@ SPA con Vite. `src/main.tsx` monta `QueryClientProvider`, `SesionProvider` y `Ro
     (paquetes LISTO_PARA_ENTREGA del cliente sin delivery por salir; retiro en agencia solo con la factura saldada,
     con enlace a la factura por cobrar; delivery con la dirección del cliente). `/entregas/historial`: todas, con
     filtros. Qué acción se ofrece en cada estado (`estadoQuePermite`) y quién es "solo repartidor" (`esSoloRepartidor`)
-    se comparan con `EntregasService.cs`. La lista de repartidores sale de `/api/users`: solo el ADMIN la ve; el AGENTE
-    programa sin repartidor y no saca a ruta una entrega sin asignar (ver decisiones abiertas). En la ficha del paquete:
+    se comparan con `EntregasService.cs`. Los repartidores para elegir (al programar o al salir a ruta) salen de
+    `/api/deliveries/couriers` (ADMIN y AGENTE). El repartidor lee el tipo de cambio vigente y ve el monto en C$ antes
+    de confirmar un cobro en córdobas. En la ficha del paquete:
     "Preparar para entrega" (`PrepararEntrega`, desde PAGADO o PENDIENTE_DE_PAGO con factura) y "Programar entrega".
   - `/auditoria` (`VerAuditoria`: ADMIN): los cambios más recientes primero, con filtros por tabla, registro (con la
     tabla, su historia), usuario, acción y rango de días (`inicioDelDia`/`finDelDia`, en hora de Managua; un rango al
@@ -729,7 +733,9 @@ SPA con Vite. `src/main.tsx` monta `QueryClientProvider`, `SesionProvider` y `Ro
 - `EntregasTests.cs` cubre retiro en agencia agrupado, preparar (pagado o con factura), retiro con
   saldo cobrado antes en caja, delivery completo con el repartidor, contra entrega en córdobas,
   fallido y reprogramado, un intento vigente y cancelación, visita de un solo cliente, dirección,
-  visibilidad y 403 del repartidor, responsable inválido, anulaciones con paquetes preparados y permisos.
+  visibilidad y 403 del repartidor, responsable inválido, anulaciones con paquetes preparados, los repartidores
+  asignables (solo los activos de la agencia), el tipo de cambio vigente para el repartidor (pero no la lista ni el
+  registro) y permisos.
 - `AuditoriaTests.cs` cubre usuario, origen y traceId de los cambios de la API, UPDATE con solo lo que
   cambió, cambios hechos por triggers, SQL manual sin usuario, UPDATE sin cambios reales, DELETE con
   clave compuesta, que las variables de sesión no pasan a otra solicitud por el pool, inmutabilidad
@@ -811,12 +817,6 @@ No implementar algo solo porque "podría ser útil".
   - Resolver preguntas abiertas de la sección 9 de `docs/modelo-datos.md` (tarifa marítima por libra o pie³,
     redondeo/mínimo de peso, paquetes sin aviso en Miami, cédula del cliente).
   - Búsqueda de clientes sin distinguir acentos (`unaccent` + migración).
-  - **Repartidores para el AGENTE:** la única lista de repartidores es `/api/users` (solo ADMIN). El agente programa
-    deliveries sin repartidor y no puede sacar a ruta uno sin asignar; el repartidor tampoco ve los sin asignar.
-    Propuesta: `GET /api/deliveries/couriers` (`ProgramarEntregas`) con los repartidores activos.
-  - **Tipo de cambio para el REPARTIDOR:** `GET /api/exchange-rates/current` es de `Facturar` (ADMIN, AGENTE). Al
-    cobrar contra entrega en córdobas, el repartidor no ve el monto en C$ antes de confirmar (lo calcula el backend).
-    Propuesta: permitirlo también a `OperarReparto`, o incluir el equivalente en córdobas en `PendingCharge`.
   - Al corregir el peso, el monto se recalcula con la tarifa de hoy, no con la del primer pesaje: confirmar con la agencia.
   - Evaluar si se requieren permisos finos (`Permiso`/`RolPermiso`) y cuadre de caja del repartidor.
   - Definir `Cors:AllowedOrigins` y SMTP propio en Supabase para producción. Sin SMTP propio, Supabase solo

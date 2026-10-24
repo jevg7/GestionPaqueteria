@@ -104,6 +104,17 @@ public sealed class EntregasService(
     public async Task<DeliveryResponse?> ObtenerAsync(long id, CancellationToken cancellationToken) =>
         (await ObtenerVariasAsync([id], cancellationToken)).SingleOrDefault();
 
+    /// <summary>
+    /// Los repartidores de la agencia que pueden recibir entregas: usuario activo con el rol REPARTIDOR activo, la misma
+    /// regla que <see cref="ValidarRepartidorAsync"/>. Por nombre.
+    /// </summary>
+    public async Task<IReadOnlyList<UserRef>> RepartidoresAsync(CancellationToken cancellationToken) =>
+        await db.UsuarioRoles.AsNoTracking()
+            .Where(ur => ur.Usuario.Activo && ur.Rol.Activo && ur.Rol.Codigo == CodigosRol.Repartidor)
+            .OrderBy(ur => ur.Usuario.Nombres).ThenBy(ur => ur.Usuario.Apellidos).ThenBy(ur => ur.UsuarioId)
+            .Select(ur => new UserRef(ur.Usuario.Id, ur.Usuario.Nombres + " " + ur.Usuario.Apellidos))
+            .ToListAsync(cancellationToken);
+
     /// <summary>Programa el delivery de paquetes LISTO_PARA_ENTREGA de un mismo cliente (PENDIENTE).</summary>
     public async Task<IReadOnlyList<DeliveryResponse>> ProgramarAsync(ScheduleDeliveryRequest datos, CancellationToken cancellationToken)
     {

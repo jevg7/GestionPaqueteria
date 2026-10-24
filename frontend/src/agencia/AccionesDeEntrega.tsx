@@ -30,7 +30,6 @@ import {
 } from './entregas.ts'
 import { metodosDePago, nombresDeMetodoDePago, textoDelPago } from './facturas.ts'
 import { opcionesTipoDeCambioVigente } from './tiposDeCambio.ts'
-import { nombreDelUsuario } from './usuarios.ts'
 
 // Las acciones sobre una visita (las entregas de un cliente que se operan juntas). Cada una muestra su formulario en la
 // página; "Volver" la cierra sin cambios.
@@ -48,11 +47,11 @@ const textoDePaquetes = (cantidad: number) => (cantidad === 1 ? '1 paquete' : `$
 
 /**
  * PENDIENTE → EN_RUTA: sus paquetes pasan a En reparto. Un repartidor sale con las suyas (quedan a su nombre); ADMIN y
- * AGENTE salen en nombre del repartidor asignado, y el ADMIN puede elegir otro (la lista de repartidores es suya).
+ * AGENTE salen en nombre del repartidor asignado o eligen uno.
  */
 export function SalirARuta({ visita, alTerminar, alVolver }: Props) {
   const soloRepartidor = esSoloRepartidor(useIdentidadActual().roles)
-  const eligeRepartidor = usePermiso('AdministrarUsuarios') && !soloRepartidor
+  const eligeRepartidor = usePermiso('ProgramarEntregas') && !soloRepartidor
   const repartidores = useQuery({ ...opcionesRepartidores, enabled: eligeRepartidor })
   const [elegido, setElegido] = useState(visita.responsable ? String(visita.responsable.id) : '')
   const [error, setError] = useState<string>()
@@ -85,7 +84,7 @@ export function SalirARuta({ visita, alTerminar, alVolver }: Props) {
               <option value="">{repartidores.isPending ? 'Cargando…' : 'Elija el repartidor…'}</option>
               {repartidores.data?.map((repartidor) => (
                 <option key={repartidor.id} value={repartidor.id}>
-                  {nombreDelUsuario(repartidor)}
+                  {repartidor.nombre}
                 </option>
               ))}
             </Seleccion>
@@ -96,7 +95,7 @@ export function SalirARuta({ visita, alTerminar, alVolver }: Props) {
         (visita.responsable ? (
           <p className="text-sm text-slate-700">Repartidor: {visita.responsable.nombre}.</p>
         ) : (
-          <Aviso tipo="advertencia">No tiene repartidor asignado: un administrador debe elegirlo al salir a ruta.</Aviso>
+          <Aviso tipo="advertencia">No tiene repartidor asignado: quien programa entregas debe elegirlo al salir a ruta.</Aviso>
         ))
       )}
       {error && <Aviso tipo="error">{error}</Aviso>}
@@ -119,7 +118,7 @@ export function SalirARuta({ visita, alTerminar, alVolver }: Props) {
 export function ConfirmarEntrega({ visita, alTerminar, alVolver }: Props) {
   const cobro = cobroDeLaVisita(visita.entregas)
   const conCobro = cobro.facturas.length > 0
-  // Un repartidor no puede leer el tipo de cambio (la API se lo niega): entonces no se muestra el monto en córdobas.
+  // Si no se pudo leer el tipo de cambio, el monto en córdobas lo calcula la API al confirmar.
   const vigente = useQuery({ ...opcionesTipoDeCambioVigente, enabled: conCobro })
   const tipoDeCambio = vigente.data?.nioPorUsd ?? null
   const esquema = useMemo(() => esquemaConfirmacion(conCobro), [conCobro])
