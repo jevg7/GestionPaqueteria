@@ -41,6 +41,7 @@ paqueteria/
 ├── backend/        # ASP.NET Core Web API + tests (completo: flujo operativo + administración SaaS)
 ├── frontend/       # React + TypeScript + Vite (completo: plataforma, administración, operación, caja, entregas, auditoría)
 ├── database/       # schema.sql (v2 congelado), seed.sql, tests/
+├── deploy/         # plantillas de producción: nginx/, systemd/, api.env.example (sin secretos)
 └── docs/
 ```
 
@@ -137,7 +138,9 @@ npm test        # Vitest: pruebas unitarias, sin la API ni Supabase
 ## Infraestructura base de la API
 
 - `Program.cs` configura DI, controllers, el `DbContext` existente, routing, redirección HTTPS,
-  ProblemDetails, manejo global de excepciones y CORS. Se mantiene un solo proyecto de API,
+  ProblemDetails, manejo global de excepciones y CORS. **Cabeceras reenviadas:** `UseForwardedHeaders` (primero
+  del pipeline) toma `X-Forwarded-For` y `X-Forwarded-Proto` solo de loopback (`KnownProxies` por defecto), es decir,
+  del Nginx del mismo servidor; de cualquier otra IP se ignoran (`SoloElProxyLocalFijaEsquemaEIpDelCliente`). Se mantiene un solo proyecto de API,
   sin repositorios ni capas adicionales. Controllers de negocio: `MeController`, `CatalogsController`,
   `ClientsController`, `PackagesController`, `ShipmentsController`, `InvoicesController`,
   `PaymentsController`, `ExchangeRatesController`, `DeliveriesController`, `AuditLogsController`,
@@ -754,12 +757,13 @@ SPA con Vite. `src/main.tsx` monta `QueryClientProvider`, `SesionProvider` y `Ro
   módulos: invitación y entrada del invitado, fallas de Supabase sin dejar datos, reglas del ADMIN (con
   la carrera de dos ADMIN), alta de agencia completa con su auditoría, cierre y reapertura de tarifas,
   rutas US → NI, aislamiento y permisos.
-- Última verificación completa con Docker (2026-10-24, reparto): `dotnet build` sin advertencias ni errores;
-  `dotnet test` con 414 pruebas aprobadas: 145 unitarias y 269 de integración (5 nuevas en `EntregasTests`:
-  repartidores asignables, tipo de cambio vigente para el repartidor y 3 casos de la matriz de permisos), ninguna
-  omitida. Siguen pasando `SchemaSqlSigueCongelado`, `HasPendingModelChanges() = false`, la comparación del modelo
-  con PostgreSQL 16 y `flujo_completo.sql` mediante la migración `Baseline`. (La anterior, 2026-09-29, con la
-  administración: 409 pruebas.)
+- Última verificación completa con Docker (2026-10-24, búsqueda sin tildes): `dotnet build` sin advertencias ni
+  errores; `dotnet test` con 425 pruebas aprobadas: 145 unitarias y 280 de integración (11 nuevas: casos sin tildes en
+  `ClientesTests` y `UsuariosTests`, y `BusquedaSinTildesTests`: índice con `EXPLAIN`, escape después de `unaccent`,
+  esquema `extensions` de Supabase y reversión de la migración), ninguna omitida. Siguen pasando
+  `SchemaSqlSigueCongelado`, `HasPendingModelChanges() = false`, la comparación del modelo con PostgreSQL 16 y
+  `flujo_completo.sql`. Después se agregaron 2 casos de cabeceras reenviadas (`ApiInfrastructureTests`: 27 aprobadas).
+  (La anterior, 2026-10-24 con el reparto: 414 pruebas.)
 - Verificación contra Supabase real (2026-10-18): migración `20260930001535_Baseline` aplicada sobre el pooler
   en modo sesión (`aws-1-us-west-2.pooler.supabase.com:5432`), rol `paqueteria_api_app` creado, `seed.sql`
   cargado y `flujo_completo.sql` ejecutado completo (`=== TODAS LAS PRUEBAS PASARON ===`); `dotnet build`
@@ -769,7 +773,9 @@ SPA con Vite. `src/main.tsx` monta `QueryClientProvider`, `SesionProvider` y `Ro
 
 Ramas: `main`, `develop`, `feature/*`, `fix/*`. Commits pequeños y descriptivos.
 La raíz del repositorio es esta carpeta. `.gitattributes` fija LF en el repositorio y en la copia de trabajo
-(no depende de `core.autocrlf`).
+(no depende de `core.autocrlf`). Remoto: `origin` = https://github.com/jevg7/GestionPaqueteria.git (subido el
+2026-10-25: `main`, `develop` y la rama del paso en curso). Las ramas ya unidas a `develop` (`feature/frontend-fase-*`,
+`fix/*`) quedan solo en local.
 
 ## Antes de cada funcionalidad nueva
 
@@ -777,7 +783,7 @@ Responder: qué problema del negocio resuelve, qué actor la usa, qué datos nec
 qué entidad modifica, qué permisos requiere, si genera auditoría y cómo se prueba.
 No implementar algo solo porque "podría ser útil".
 
-## Estado actual (revisado el 2026-10-18)
+## Estado actual (revisado el 2026-10-25)
 
 ### Completado (Backend y Base de Datos en Supabase — 100 %)
 
@@ -823,9 +829,14 @@ No implementar algo solo porque "podría ser útil".
     redondeo/mínimo de peso, paquetes sin aviso en Miami, cédula del cliente).
   - Al corregir el peso, el monto se recalcula con la tarifa de hoy, no con la del primer pesaje: confirmar con la agencia.
   - Evaluar si se requieren permisos finos (`Permiso`/`RolPermiso`) y cuadre de caja del repartidor.
-  - Definir `Cors:AllowedOrigins` y SMTP propio en Supabase para producción. Sin SMTP propio, Supabase solo
+  - SMTP propio en Supabase para producción (decidido: **Brevo**). Sin SMTP propio, Supabase solo
     envía correos a los miembros del equipo del proyecto (y 2 por hora): una invitación a otro correo falla con
     `email_address_not_authorized`, que la API muestra hoy como "El sistema de acceso rechazó el correo…".
+    `Cors:AllowedOrigins` queda vacío en producción: frontend y API van en el mismo dominio.
+  - **Falta "¿Olvidó su contraseña?"** en `/iniciar-sesion`: el backend (`resend-invite` → 409 si ya aceptó) y
+    `UsuarioDetalle` remiten a ese flujo, y `/aceptar-invitacion` ya acepta enlaces `recovery`, pero nadie puede
+    pedir el correo de recuperación (hoy solo desde el panel de Supabase).
+  - La migración `BusquedaSinTildes` **no está aplicada en Supabase** (pedir confirmación antes de aplicarla).
 
 ---
 
@@ -898,3 +909,37 @@ Con el backend, la base de datos y las credenciales de Supabase listos en `user-
 
 1. Definir con la agencia las preguntas abiertas de `docs/modelo-datos.md` (sección 9) e implementar migraciones si alguna regla cambia (p. ej. `unaccent` para búsqueda de clientes o volumen en envíos marítimos).
 2. Configurar entorno de producción: base de datos en Supabase conectada por el pooler en **modo sesión (puerto 5432)**, SMTP propio para invitaciones, Site URL y Redirect URLs de Supabase Auth con la URL del frontend de producción, variables de entorno (`ConnectionStrings`, `Auth`, `Supabase`, `Plataforma`, `Cors:AllowedOrigins`) y pipeline CI/CD.
+
+**Avance (rama `feature/paso-5-produccion`, aún sin unir a `develop`):**
+
+- Decisiones del usuario (2026-10-24): hosting en Namecheap, repositorio en GitHub, SMTP con Brevo; las preguntas de
+  la agencia (punto 1) siguen pendientes y se avanza con lo que no depende de ellas.
+- [x] **Parte 1 — Búsqueda sin tildes** (2026-10-24): migración `BusquedaSinTildes` (`unaccent`, `fn_sin_tildes`,
+  `fn_patron_contiene_sin_tildes`, índice `ix_clientes_nombre_sin_tildes_trgm`) en clientes y usuarios; el frontend ya
+  no avisa que la búsqueda distingue tildes. Ver "Módulo de clientes". No aplicada aún en Supabase.
+- [ ] **Parte 2 — Preparación para producción** (en curso):
+  - [x] API detrás de Nginx: `UseForwardedHeaders` solo desde loopback (con prueba).
+  - [x] Plantillas en `deploy/`: `nginx/paqueteria.conf` (frontend estático y `/api` + `/health` por proxy a
+    `127.0.0.1:5000` en el mismo dominio; CSP estricta `default-src 'self'` + `connect-src` de Supabase, posible porque
+    el build no tiene scripts ni estilos en línea; HSTS; `/assets/` un año en caché e `index.html` sin caché;
+    `listen … http2` porque Ubuntu 24.04 trae Nginx 1.24), `systemd/paqueteria-api.service` (usuario `paqueteria`,
+    sistema de solo lectura, `EnvironmentFile=/etc/paqueteria/api.env`) y `api.env.example` (sin secretos).
+  - [ ] Validar esas plantillas en un Ubuntu 24.04 en Docker (`nginx -t`, fallback de rutas, cabeceras y la CSP con
+    Playwright) antes de usarlas en el servidor.
+  - [ ] `docs/despliegue.md`: Namecheap (dominio + **VPS** Ubuntu 24.04 en EE. UU.; el hosting compartido no ejecuta
+    .NET), DNS, `apt install aspnetcore-runtime-10.0` (ya está en el repositorio de Ubuntu 24.04, sin PPA), Nginx +
+    certbot (`certonly`), Brevo (dominio autenticado con DKIM/DMARC en Namecheap; la clave SMTP solo en el panel de
+    Supabase: `smtp-relay.brevo.com:587`), Supabase (Site URL y Redirect URL `https://<dominio>/aceptar-invitacion`,
+    plantillas de correo en español, límites de envío), migraciones manuales con el dueño, primer dueño de la
+    plataforma (invitarlo desde el panel de Supabase) y lista de comprobación.
+  - [ ] CI/CD en GitHub Actions: `ci.yml` (backend: restore, build Release y `dotnet test` con Testcontainers en
+    `ubuntu-24.04`; frontend: `npm ci`, lint, test y build; también `workflow_call`) y `deploy.yml` (manual: publish
+    de la API, build del frontend con `vars.VITE_*`, rsync por SSH con `secrets.VPS_SSH_KEY` y reinicio del servicio;
+    sin migraciones automáticas). Versiones vigentes (2026-10-24): `checkout@v7`, `setup-dotnet@v6`, `setup-node@v7`.
+  - [ ] Pantalla "¿Olvidó su contraseña?" (ver decisiones abiertas).
+- Datos para producción ya comprobados:
+  - Conexión de la API: `Username=paqueteria_api_app.<ref>`, `SSL Mode=VerifyFull;Root Certificate=<CA de Supabase>`
+    (el certificado del pooler `*.pooler.supabase.com` encadena a "Supabase Root 2021 CA", la que se descarga del
+    panel) y `Maximum Pool Size` por debajo del Pool Size del pooler (en modo sesión cada conexión ocupa una).
+  - Recomendado: un proyecto de Supabase aparte para producción (el actual queda para desarrollo), en plan Pro
+    (copias de seguridad diarias). `seed.sql` es solo de desarrollo: en producción las agencias se crean desde el panel.
