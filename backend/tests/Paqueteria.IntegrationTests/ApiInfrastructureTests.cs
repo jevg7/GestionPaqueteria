@@ -113,21 +113,30 @@ public class ApiInfrastructureTests
 
     [Theory]
     [InlineData("Development", "http://localhost:5173", true)]
+    [InlineData("Development", "http://127.0.0.1:5173", true)]
     [InlineData("Development", "https://no-autorizado.example", false)]
     [InlineData("Production", "http://localhost:5173", false)]
+    [InlineData("Production", "http://127.0.0.1:5173", false)]
     public async Task CorsSoloPermiteOrigenesConfigurados(string environment, string origin, bool allowed)
     {
         await using var factory = new ApiDePrueba(environment);
         using var client = factory.Client();
-        using var request = new HttpRequestMessage(HttpMethod.Options, "/health");
+        // La llamada real del frontend lleva Bearer y JSON hacia un endpoint protegido.
+        using var request = new HttpRequestMessage(HttpMethod.Options, "/api/users");
         request.Headers.Add("Origin", origin);
-        request.Headers.Add("Access-Control-Request-Method", "GET");
-        request.Headers.Add("Access-Control-Request-Headers", "content-type");
+        request.Headers.Add("Access-Control-Request-Method", "POST");
+        request.Headers.Add("Access-Control-Request-Headers", "authorization,content-type");
         using var response = await client.SendAsync(request, Ct);
         Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
         Assert.Equal(allowed, response.Headers.Contains("Access-Control-Allow-Origin"));
         if (allowed)
+        {
             Assert.Equal(origin, Assert.Single(response.Headers.GetValues("Access-Control-Allow-Origin")));
+            Assert.Contains("POST", response.Headers.GetValues("Access-Control-Allow-Methods"));
+            var headers = string.Join(",", response.Headers.GetValues("Access-Control-Allow-Headers"));
+            Assert.Contains("authorization", headers, StringComparison.OrdinalIgnoreCase);
+            Assert.Contains("content-type", headers, StringComparison.OrdinalIgnoreCase);
+        }
     }
 
     [Theory]
@@ -156,6 +165,27 @@ public class ApiInfrastructureTests
             Assert.Equal("http", bearer.GetProperty("type").GetString());
             Assert.Equal("bearer", bearer.GetProperty("scheme").GetString());
         }
+    }
+
+    [Fact]
+    public async Task OpenApiDocumentaEnumsComoCodigosDeTexto()
+    {
+        await using var factory = new ApiDePrueba("Development");
+        using var client = factory.Client();
+        using var response = await client.GetAsync("/openapi/v1.json", Ct);
+        response.EnsureSuccessStatusCode();
+        using var document = JsonDocument.Parse(await response.Content.ReadAsStringAsync(Ct));
+        var schemas = document.RootElement.GetProperty("components").GetProperty("schemas");
+
+        var estadoEmbarque = schemas.GetProperty("EstadoEmbarque");
+        Assert.Equal("string", estadoEmbarque.GetProperty("type").GetString());
+        Assert.Equal(["ABIERTO", "CERRADO", "EN_TRANSITO", "RECIBIDO", "CANCELADO"],
+            estadoEmbarque.GetProperty("enum").EnumerateArray().Select(value => value.GetString()));
+
+        var estadoAgencia = schemas.GetProperty("EstadoAgencia");
+        Assert.Equal("string", estadoAgencia.GetProperty("type").GetString());
+        Assert.Equal(["ACTIVA", "SUSPENDIDA"],
+            estadoAgencia.GetProperty("enum").EnumerateArray().Select(value => value.GetString()));
     }
 
     [Fact]

@@ -37,11 +37,15 @@ builder.Services.AddScoped<UsuariosService>();
 builder.Services.AddScoped<AgenciasService>();
 builder.Services.AddScoped<TarifasService>();
 builder.Services.AddScoped<UbicacionesService>();
+builder.Services.AddScoped<ContabilidadService>();
 builder.Services.AddSingleton(TimeProvider.System);
 
 // Los enums viajan en JSON con el mismo código que en la BD: EnTransito <-> "EN_TRANSITO".
 builder.Services.AddControllers().AddJsonOptions(options =>
     options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter(JsonNamingPolicy.SnakeCaseUpper)));
+// OpenAPI usa las opciones JSON HTTP, separadas de las de MVC.
+builder.Services.ConfigureHttpJsonOptions(options =>
+    options.SerializerOptions.Converters.Add(new JsonStringEnumConverter(JsonNamingPolicy.SnakeCaseUpper)));
 builder.Services.AddProblemDetails(options => options.CustomizeProblemDetails = context =>
     context.ProblemDetails.Extensions["traceId"] = context.HttpContext.TraceIdentifier);
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
@@ -49,25 +53,38 @@ builder.Services.AddCors(options => options.AddDefaultPolicy(policy =>
     policy.WithOrigins(allowedOrigins).AllowAnyHeader().AllowAnyMethod()));
 // JWT de Supabase Auth. Todo endpoint exige un empleado activo salvo los marcados AllowAnonymous.
 builder.Services.AddAutenticacionSupabase(builder.Configuration);
-builder.Services.AddOpenApi("v1", options => options.AddDocumentTransformer((document, context, ct) =>
+builder.Services.AddOpenApi("v1", options =>
 {
-    document.Info.Title = "Paqueteria API";
-    document.Info.Description = "API REST del Sistema de Gestión de Paquetería";
-    document.Info.Version = "v1";
-
-    // Botón "Authorize" de Swagger UI: pegar el access_token de Supabase.
-    document.Components ??= new OpenApiComponents();
-    document.Components.SecuritySchemes ??= new Dictionary<string, IOpenApiSecurityScheme>();
-    document.Components.SecuritySchemes["Bearer"] = new OpenApiSecurityScheme
+    // El exportador de .NET puede omitir el tipo aunque todos los valores sean texto.
+    options.AddSchemaTransformer((schema, context, ct) =>
     {
-        Type = SecuritySchemeType.Http,
-        Scheme = "bearer",
-        BearerFormat = "JWT",
-        Description = "access_token de una sesión de Supabase Auth.",
-    };
-    document.Security = [new OpenApiSecurityRequirement { [new OpenApiSecuritySchemeReference("Bearer", document)] = [] }];
-    return Task.CompletedTask;
-}));
+        if (schema.Type is null && schema.Enum is { Count: > 0 } &&
+            schema.Enum.All(value => value?.GetValueKind() == JsonValueKind.String))
+        {
+            schema.Type = JsonSchemaType.String;
+        }
+        return Task.CompletedTask;
+    });
+    options.AddDocumentTransformer((document, context, ct) =>
+    {
+        document.Info.Title = "Paqueteria API";
+        document.Info.Description = "API REST del Sistema de Gestión de Paquetería";
+        document.Info.Version = "v1";
+
+        // Botón "Authorize" de Swagger UI: pegar el access_token de Supabase.
+        document.Components ??= new OpenApiComponents();
+        document.Components.SecuritySchemes ??= new Dictionary<string, IOpenApiSecurityScheme>();
+        document.Components.SecuritySchemes["Bearer"] = new OpenApiSecurityScheme
+        {
+            Type = SecuritySchemeType.Http,
+            Scheme = "bearer",
+            BearerFormat = "JWT",
+            Description = "access_token de una sesión de Supabase Auth.",
+        };
+        document.Security = [new OpenApiSecurityRequirement { [new OpenApiSecuritySchemeReference("Bearer", document)] = [] }];
+        return Task.CompletedTask;
+    });
+});
 
 var app = builder.Build();
 

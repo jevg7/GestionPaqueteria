@@ -1,5 +1,9 @@
 # Modelo de dominio y de datos — v1
 
+> **Extensión contable (2026-11-01):** el libro diario, gastos y estados financieros
+> en NIO se describen en [contabilidad.md](contabilidad.md). Se implementan mediante
+> una migración nueva, conservando el Baseline congelado y las reglas operativas.
+
 **Estado:** revisado y cerrado para v1 · **Fecha:** 2026-09-29
 
 > **Multi-agencia (esquema v2):** el sistema es ahora un SaaS con varias agencias. Todas las tablas de

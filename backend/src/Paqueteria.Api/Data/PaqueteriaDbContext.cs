@@ -42,6 +42,9 @@ public class PaqueteriaDbContext(DbContextOptions<PaqueteriaDbContext> options) 
     public DbSet<FacturaSaldo> FacturasSaldo => Set<FacturaSaldo>();
     public DbSet<TipoCambio> TiposCambio => Set<TipoCambio>();
     public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
+    public DbSet<ContabilidadCuenta> CuentasContables => Set<ContabilidadCuenta>();
+    public DbSet<ContabilidadAsiento> AsientosContables => Set<ContabilidadAsiento>();
+    public DbSet<ContabilidadPartida> PartidasContables => Set<ContabilidadPartida>();
 
     /// <summary>
     /// Configuración común de la API, de dotnet ef y de los tests: Npgsql, snake_case e

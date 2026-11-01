@@ -1,0 +1,236 @@
+.accounting-actions,
+.accounting-tabs,
+.accounting-filters,
+.accounting-line-title,
+.accounting-totals,
+.accounting-entry-heading {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.accounting-tabs {
+  margin: 0 0 24px;
+}
+.accounting-tabs .button {
+  flex: 1 0 auto;
+  justify-content: center;
+}
+.accounting-filters {
+  padding: 0 24px 24px;
+  align-items: end;
+}
+.accounting-filters > label {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 700;
+}
+.accounting-filters input,
+.accounting-filters select {
+  min-height: 43px;
+  min-width: 150px;
+}
+.accounting-filters .accounting-search {
+  flex: 1;
+}
+.accounting-search input {
+  width: 100%;
+}
+.accounting-amount {
+  text-align: right;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.accounting-fieldset {
+  border: 0;
+  padding: 0;
+  margin: 0;
+  min-width: 0;
+}
+.accounting-fieldset .form-grid {
+  padding: 0;
+}
+.accounting-lines {
+  display: grid;
+  gap: 15px;
+  margin: 18px 0;
+}
+.accounting-line {
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 15px;
+  background: var(--surface, #fffdf8);
+}
+.accounting-line-title {
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+.accounting-line-amounts {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+.accounting-line .field {
+  margin-bottom: 9px;
+}
+.accounting-totals {
+  justify-content: space-between;
+  padding: 16px;
+  margin: 18px 0;
+  border-radius: 13px;
+  background: #faf0ce;
+  font-variant-numeric: tabular-nums;
+}
+.accounting-balanced {
+  background: #e8f2dc;
+}
+.accounting-entry-heading {
+  margin: 0 0 18px;
+}
+.accounting-explanation {
+  display: flex;
+  gap: 20px;
+  padding: 0 26px 28px;
+  max-width: 850px;
+}
+.accounting-explanation > svg {
+  flex-shrink: 0;
+  margin-top: 5px;
+}
+.accounting-explanation h3 {
+  margin-top: 0;
+}
+.accounting-explanation p {
+  line-height: 1.7;
+  color: var(--muted);
+}
+.accounting-explanation .button {
+  margin: 8px 8px 0 0;
+}
+.accounting-report > .notice,
+.accounting-report > .page-hint {
+  margin: 20px 24px;
+}
+.accounting-report-heading {
+  padding: 4px 24px 18px;
+  border-bottom: 1px solid var(--line);
+}
+.accounting-report-heading h3 {
+  margin: 0 0 6px;
+  font-size: 23px;
+}
+.accounting-report-heading p {
+  color: var(--muted);
+  margin: 0;
+}
+.accounting-balance-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 26px;
+  padding: 0 24px 24px;
+}
+.accounting-statement-section {
+  padding: 16px 24px;
+}
+.accounting-balance-grid .accounting-statement-section {
+  padding: 16px 0;
+}
+.accounting-statement-section h3 {
+  margin: 0 0 12px;
+}
+.accounting-statement-section ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+.accounting-statement-section li {
+  display: flex;
+  gap: 18px;
+  justify-content: space-between;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--line);
+}
+.accounting-statement-section li > strong {
+  white-space: nowrap;
+}
+.accounting-statement-section small {
+  display: block;
+  color: var(--muted);
+  margin-top: 4px;
+}
+.accounting-report-total {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  margin: 0 24px;
+  padding: 13px 0;
+  border-top: 1px solid var(--line);
+  font-weight: 700;
+}
+.accounting-balance-grid .accounting-report-total {
+  margin: 0;
+}
+.accounting-report-total-main {
+  margin-top: 8px;
+  background: #e8f2dc;
+  padding: 15px;
+  border-radius: 12px;
+  border: 0;
+}
+.accounting-report-total > strong {
+  white-space: nowrap;
+}
+.accounting-report tfoot,
+.accounting-entry-table tfoot {
+  font-weight: 800;
+  background: #fbf6ec;
+}
+@media (max-width: 720px) {
+  .accounting-actions {
+    width: 100%;
+  }
+  .accounting-actions .button {
+    flex: 1;
+  }
+  .accounting-tabs .button {
+    flex-basis: calc(50% - 12px);
+    font-size: 12px;
+  }
+  .accounting-balance-grid {
+    grid-template-columns: 1fr;
+    gap: 5px;
+    padding: 0 16px 16px;
+  }
+  .accounting-filters {
+    padding: 0 16px 20px;
+  }
+  .accounting-filters > label {
+    flex: 1;
+    min-width: 130px;
+  }
+  .accounting-filters .accounting-search {
+    flex-basis: 100%;
+  }
+  .accounting-explanation {
+    padding: 0 16px 20px;
+    gap: 12px;
+  }
+  .accounting-explanation > svg {
+    display: none;
+  }
+  .accounting-report-total,
+  .accounting-report-heading {
+    margin-left: 16px;
+    margin-right: 16px;
+  }
+  .accounting-report-heading {
+    padding-left: 0;
+    padding-right: 0;
+  }
+  .accounting-statement-section {
+    padding: 16px;
+  }
+}

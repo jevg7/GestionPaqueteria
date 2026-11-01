@@ -1,0 +1,256 @@
+namespace Paqueteria.Api.Data.Sql;
+
+/// <summary>Restricciones y protección del libro contable que no expresa el modelo EF.</summary>
+public static class ContabilidadSql
+{
+    public const string Protecciones = """
+        alter table paqueteria.cuentas_contables
+          add constraint ck_cuentas_contables_codigo check (btrim(codigo) <> ''),
+          add constraint ck_cuentas_contables_nombre check (btrim(nombre) <> ''),
+          add constraint ck_cuentas_contables_tipo
+            check (tipo in ('ACTIVO', 'PASIVO', 'PATRIMONIO', 'INGRESO', 'COSTO', 'GASTO')),
+          add constraint ck_cuentas_contables_naturaleza check (naturaleza in ('DEUDORA', 'ACREEDORA')),
+          add constraint ck_cuentas_contables_clasificacion check (
+            (tipo in ('ACTIVO', 'PASIVO') and clasificacion in ('CORRIENTE', 'NO_CORRIENTE'))
+            or (tipo in ('PATRIMONIO', 'INGRESO', 'COSTO', 'GASTO') and clasificacion = 'NO_APLICA'));
+
+        alter table paqueteria.asientos_contables
+          add constraint ck_asientos_contables_concepto check (btrim(concepto) <> ''),
+          add constraint ck_asientos_contables_reversion_distinta check (reversion_de_id is null or reversion_de_id <> id);
+
+        alter table paqueteria.partidas_contables
+          add constraint ck_partidas_contables_un_lado check (
+            (debe > 0 and haber = 0) or (haber > 0 and debe = 0));
+
+        create function paqueteria.fn_contabilidad_cuenta_proteger()
+        returns trigger
+        language plpgsql
+        set search_path = paqueteria, public
+        as $$
+        begin
+          if (new.id, new.agencia_id, new.creado_en)
+             is distinct from (old.id, old.agencia_id, old.creado_en) then
+            raise exception 'La identidad de la cuenta contable no puede cambiar'
+              using errcode = 'restrict_violation';
+          end if;
+          if (new.codigo, new.tipo, new.clasificacion, new.naturaleza)
+             is distinct from (old.codigo, old.tipo, old.clasificacion, old.naturaleza)
+             and exists (
+               select 1 from paqueteria.partidas_contables
+               where cuenta_id = old.id and agencia_id = old.agencia_id) then
+            raise exception 'Una cuenta con movimientos no puede cambiar código, tipo, clasificación ni naturaleza'
+              using errcode = 'restrict_violation';
+          end if;
+          return new;
+        end $$;
+
+        create trigger trg_cuentas_contables_proteger
+          before update on paqueteria.cuentas_contables
+          for each row execute function paqueteria.fn_contabilidad_cuenta_proteger();
+
+        create function paqueteria.fn_contabilidad_asiento_insertar()
+        returns trigger
+        language plpgsql
+        set search_path = paqueteria, public
+        as $$
+        declare
+          v_original record;
+        begin
+          -- Se fuerza, en lugar de confiar solo en un DEFAULT modificable por un INSERT.
+          new.creado_xid := txid_current();
+          if new.reversion_de_id is not null then
+            select fecha, reversion_de_id into v_original
+            from paqueteria.asientos_contables
+            where id = new.reversion_de_id and agencia_id = new.agencia_id
+            for share;
+            if not found then
+              raise exception 'No existe el asiento original de la reversión'
+                using errcode = 'check_violation';
+            end if;
+            if v_original.reversion_de_id is not null then
+              raise exception 'No se permite revertir un contraasiento de reversión'
+                using errcode = 'check_violation';
+            end if;
+            if new.fecha < v_original.fecha then
+              raise exception 'La reversión no puede tener fecha anterior al asiento original'
+                using errcode = 'check_violation';
+            end if;
+          end if;
+          return new;
+        end $$;
+
+        create trigger trg_asientos_contables_insertar
+          before insert on paqueteria.asientos_contables
+          for each row execute function paqueteria.fn_contabilidad_asiento_insertar();
+
+        create function paqueteria.fn_contabilidad_inmutable()
+        returns trigger
+        language plpgsql
+        as $$
+        begin
+          raise exception 'El asiento y sus partidas son inmutables; registre un contraasiento para corregirlos'
+            using errcode = 'restrict_violation';
+        end $$;
+
+        create trigger trg_asientos_contables_inmutable
+          before update on paqueteria.asientos_contables
+          for each row execute function paqueteria.fn_contabilidad_inmutable();
+        create trigger trg_partidas_contables_inmutable
+          before update on paqueteria.partidas_contables
+          for each row execute function paqueteria.fn_contabilidad_inmutable();
+
+        create function paqueteria.fn_contabilidad_partida_insertar()
+        returns trigger
+        language plpgsql
+        set search_path = paqueteria, public
+        as $$
+        declare
+          v_asiento record;
+          v_activo boolean;
+        begin
+          select creado_xid, reversion_de_id into v_asiento
+          from paqueteria.asientos_contables
+          where id = new.asiento_id and agencia_id = new.agencia_id
+          for share;
+          if not found then
+            raise exception 'No existe la cabecera del asiento contable'
+              using errcode = 'check_violation';
+          end if;
+          -- Prohíbe añadir incluso un nuevo par equilibrado a un asiento ya confirmado.
+          if v_asiento.creado_xid <> txid_current() then
+            raise exception 'No se pueden añadir partidas a un asiento ya contabilizado'
+              using errcode = 'restrict_violation';
+          end if;
+
+          -- Mantiene la clasificación estable mientras otra transacción contabiliza.
+          select activo into v_activo
+          from paqueteria.cuentas_contables
+          where id = new.cuenta_id and agencia_id = new.agencia_id
+          for share;
+          if not found then
+            raise exception 'La cuenta contable no pertenece a la agencia del asiento'
+              using errcode = 'check_violation';
+          end if;
+          if not v_activo and v_asiento.reversion_de_id is null then
+            raise exception 'No se puede contabilizar en una cuenta inactiva'
+              using errcode = 'check_violation';
+          end if;
+          return new;
+        end $$;
+
+        create trigger trg_partidas_contables_insertar
+          before insert on paqueteria.partidas_contables
+          for each row execute function paqueteria.fn_contabilidad_partida_insertar();
+
+        create function paqueteria.fn_contabilidad_verificar_cuadre()
+        returns trigger
+        language plpgsql
+        set search_path = paqueteria, public
+        as $$
+        declare
+          v_asiento_id bigint;
+          v_agencia_id bigint;
+          v_original_id bigint;
+          v_lineas bigint;
+          v_debe numeric;
+          v_haber numeric;
+        begin
+          if tg_table_name = 'asientos_contables' then
+            v_asiento_id := new.id;
+          else
+            v_asiento_id := new.asiento_id;
+          end if;
+          v_agencia_id := new.agencia_id;
+
+          select reversion_de_id into v_original_id
+          from paqueteria.asientos_contables
+          where id = v_asiento_id and agencia_id = v_agencia_id;
+          select count(*), coalesce(sum(debe), 0), coalesce(sum(haber), 0)
+            into v_lineas, v_debe, v_haber
+          from paqueteria.partidas_contables
+          where asiento_id = v_asiento_id and agencia_id = v_agencia_id;
+          if v_lineas < 2 or v_debe <= 0 or v_debe <> v_haber then
+            raise exception 'El asiento requiere al menos dos partidas y debe igual a haber mayor que cero'
+              using errcode = 'check_violation';
+          end if;
+
+          if v_original_id is not null and exists (
+            with original as (
+              select cuenta_id, sum(debe) as debe, sum(haber) as haber
+              from paqueteria.partidas_contables
+              where asiento_id = v_original_id and agencia_id = v_agencia_id
+              group by cuenta_id
+            ), reversion as (
+              select cuenta_id, sum(debe) as debe, sum(haber) as haber
+              from paqueteria.partidas_contables
+              where asiento_id = v_asiento_id and agencia_id = v_agencia_id
+              group by cuenta_id
+            )
+            select 1 from original o full join reversion r using (cuenta_id)
+            where coalesce(r.debe, 0) <> coalesce(o.haber, 0)
+               or coalesce(r.haber, 0) <> coalesce(o.debe, 0)
+          ) then
+            raise exception 'La reversión debe invertir exactamente el debe y haber original por cuenta'
+              using errcode = 'check_violation';
+          end if;
+          return null;
+        end $$;
+
+        create constraint trigger ctrg_asientos_contables_cuadre
+          after insert on paqueteria.asientos_contables
+          deferrable initially deferred
+          for each row execute function paqueteria.fn_contabilidad_verificar_cuadre();
+        create constraint trigger ctrg_partidas_contables_cuadre
+          after insert on paqueteria.partidas_contables
+          deferrable initially deferred
+          for each row execute function paqueteria.fn_contabilidad_verificar_cuadre();
+
+        create trigger trg_cuentas_contables_actualizado
+          before update on paqueteria.cuentas_contables
+          for each row execute function paqueteria.fn_set_actualizado_en();
+
+        do $$
+        declare
+          v_tabla text;
+        begin
+          foreach v_tabla in array array['cuentas_contables', 'asientos_contables', 'partidas_contables'] loop
+            execute format('alter table paqueteria.%I enable row level security', v_tabla);
+            execute format(
+              'create policy %I on paqueteria.%I to paqueteria_api using (agencia_id = paqueteria.fn_agencia_actual()) with check (agencia_id = paqueteria.fn_agencia_actual())',
+              'pol_' || v_tabla || '_agencia', v_tabla);
+            execute format(
+              'create trigger %I after insert or update or delete on paqueteria.%I for each row execute function paqueteria.fn_auditar(''id'')',
+              'trg_' || v_tabla || '_auditoria', v_tabla);
+            execute format(
+              'create trigger %I before delete on paqueteria.%I for each row execute function paqueteria.fn_impedir_borrado()',
+              'trg_' || v_tabla || '_sin_borrado', v_tabla);
+            execute format(
+              'create trigger %I before truncate on paqueteria.%I for each statement execute function paqueteria.fn_impedir_borrado()',
+              'trg_' || v_tabla || '_sin_truncate', v_tabla);
+          end loop;
+        end $$;
+
+        grant select, insert, update on table
+          paqueteria.cuentas_contables, paqueteria.asientos_contables, paqueteria.partidas_contables
+          to paqueteria_api;
+        revoke delete, truncate on table
+          paqueteria.cuentas_contables, paqueteria.asientos_contables, paqueteria.partidas_contables
+          from paqueteria_api;
+        grant usage, select on sequence
+          paqueteria.cuentas_contables_id_seq, paqueteria.asientos_contables_id_seq, paqueteria.partidas_contables_id_seq
+          to paqueteria_api;
+        grant execute on function
+          paqueteria.fn_contabilidad_cuenta_proteger(), paqueteria.fn_contabilidad_asiento_insertar(),
+          paqueteria.fn_contabilidad_inmutable(), paqueteria.fn_contabilidad_partida_insertar(),
+          paqueteria.fn_contabilidad_verificar_cuadre()
+          to paqueteria_api;
+        """;
+
+    public const string Revertir = """
+        drop function if exists paqueteria.fn_contabilidad_verificar_cuadre() cascade;
+        drop function if exists paqueteria.fn_contabilidad_partida_insertar() cascade;
+        drop function if exists paqueteria.fn_contabilidad_inmutable() cascade;
+        drop function if exists paqueteria.fn_contabilidad_asiento_insertar() cascade;
+        drop function if exists paqueteria.fn_contabilidad_cuenta_proteger() cascade;
+        """;
+}

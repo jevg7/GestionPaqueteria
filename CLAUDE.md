@@ -39,7 +39,7 @@ Si un cambio contradice el modelo, detente y pregunta; no lo "arregles" en silen
 ```text
 paqueteria/
 ├── backend/        # ASP.NET Core Web API + tests (completo: flujo operativo + administración SaaS)
-├── frontend/       # React + TypeScript + Vite (pendiente de iniciar)
+├── frontend/       # React + TypeScript + Vite (fase 1 configurada; recorrido autenticado pendiente)
 ├── database/       # schema.sql (v2 congelado), seed.sql, tests/
 └── docs/
 ```
@@ -73,7 +73,7 @@ trabajo. Evitar sobrearquitectura.
 - BD: PostgreSQL en Supabase. Esquema propio `paqueteria` (no `public`, para que la Data API de
   Supabase no lo exponga). Historial de migraciones también en `paqueteria`.
 - Auth: Supabase Auth (JWT con claves asimétricas, JWKS); la API valida el token. `usuarios.auth_user_id` = claim `sub`.
-- Frontend (después): React, TypeScript, Vite, Tailwind, React Router, TanStack Query, React Hook Form, Zod.
+- Frontend: React, TypeScript, Vite, Tailwind, React Router, TanStack Query, React Hook Form, Zod.
 
 ## Comandos
 
@@ -157,7 +157,7 @@ La API nunca aplica migraciones al arrancar y falla al iniciar si falta `Connect
   `IsDatabaseUnavailable` detecta una `NpgsqlException` sin SQLSTATE en la cadena (la BD no
   respondió) y el manejador responde 503.
 - **CORS:** se lee de `Cors:AllowedOrigins`. `appsettings.Development.json` permite
-  `http://localhost:5173`; `appsettings.json` deja la lista vacía. En despliegue configurar orígenes
+  `http://localhost:5173` y `http://127.0.0.1:5173`; `appsettings.json` deja la lista vacía. En despliegue configurar orígenes
   explícitos, por ejemplo mediante `Cors__AllowedOrigins__0`. La política permite métodos y
   encabezados para esos orígenes, sin habilitar credenciales. No usar `AllowAnyOrigin()`.
   Un origen inválido (comodín, credenciales, ruta o barra final) impide el arranque; una lista vacía
@@ -612,7 +612,23 @@ Responder: qué problema del negocio resuelve, qué actor la usa, qué datos nec
 qué entidad modifica, qué permisos requiere, si genera auditoría y cómo se prueba.
 No implementar algo solo porque "podría ser útil".
 
-## Estado actual (revisado el 2026-10-18)
+## Estado actual (revisado el 2026-10-31)
+
+### Extensión de contabilidad (2026-11-01)
+
+Contabilidad por agencia implementada en NIO: `/contabilidad` (ADMIN), plan de
+cuentas, diario de partida doble, gastos, reversión por contraasiento, balance
+general, estado de resultados y balanza. API `/api/accounting`. Usa la migración
+`20261101205707_Contabilidad`, con RLS/auditoría/inmutabilidad y validación de
+cuadre en commit. `database/schema.sql` permanece congelado. Migración ejecutada
+desde SQL Editor de Supabase y estructura comprobada en solo lectura: tres
+tablas con RLS, políticas por agencia, 17 triggers y cinco funciones contables.
+Los permisos de la API permiten operar y bloquean DELETE/TRUNCATE. La API sigue
+activa; el plan inicial se carga desde el módulo por un ADMIN de agencia.
+Diseño y comandos: `docs/contabilidad.md`; SQL idempotente en
+`database/migrations/20261101205707_Contabilidad.sql`. Los reportes usan los
+asientos del módulo: facturas y pagos operativos no se contabilizan automáticamente.
+
 
 ### Completado (Backend y Base de Datos en Supabase — 100 %)
 
@@ -646,7 +662,24 @@ No implementar algo solo porque "podría ser útil".
 - [ ] **Segundo dueño de la plataforma (opcional cuando esté listo):** agregar `Plataforma:Propietarios:1` en `user-secrets` (el primero ya está configurado).
 - [x] **Repositorio Git (2026-10-18):** inicializado en esta carpeta con `.gitignore`, `.gitattributes` y el commit
   inicial en `main` (de ahí sale `develop`). `Claude stuff/` (copias v1 del esquema) quedó archivada fuera del workspace.
-- [ ] **Frontend (`frontend/`):** aún no se ha creado el proyecto React + TypeScript + Vite.
+- [x] **Frontend Fase 1 (`frontend/`, 2026-10-24):** React + TypeScript + Vite + Tailwind,
+  React Router, TanStack Query, React Hook Form y Zod. Bienvenida, navegación por rol,
+  plataforma/agencias, usuarios, tarifas, tipos de cambio, ubicaciones y rutas.
+  Integración con API/Supabase habilitada por defecto (2026-10-27); demostración opcional con
+  `npm run dev:demo`. Validación de configuración pública, Bearer vigente por solicitud, manejo
+  de sesión vencida y purga de datos al cambiar roles/agencia. CORS comprobado por HTTP y
+  autenticación/invitaciones cubiertas con pruebas locales. El usuario proporcionó la URL y
+  la clave pública, guardadas en `frontend/.env.local` (excluido de Git). Se verificaron Auth
+  `/settings` y JWKS reales con HTTP 200 y la compilación del frontend. Los user-secrets del backend
+  ya están guardados y validados en este equipo (2026-10-31). La conexión PostgreSQL real fue
+  comprobada en solo lectura: esquema presente y rol de la API miembro de `paqueteria_api`, sin
+  superusuario ni bypass de RLS. Se conserva `SSL Mode=VerifyFull` con la CA pública oficial junto
+  a user-secrets; la contraseña se serializa correctamente sin cambiar su valor. La API administrativa
+  de Auth respondió HTTP 200 con `HttpClient` sin User-Agent. El certificado HTTPS local de .NET ya
+  está confiado. El propietario configurado existe, pero su correo sigue sin confirmar: login e
+  invitaciones de extremo a extremo quedan pendientes.
+  Ver `frontend/README.md` y `docs/frontend-fase-1.md`.
+- [ ] **Frontend Fases 2 y 3:** clientes, paquetes, embarques, facturación, pagos, entregas y auditoría.
 - [ ] **Mejoras y decisiones abiertas:**
   - Confirmar con la agencia/contador que la tarifa incluye IVA (`impuestos = 0`).
   - Resolver preguntas abiertas de la sección 9 de `docs/modelo-datos.md` (tarifa marítima por libra o pie³,
@@ -659,7 +692,9 @@ No implementar algo solo porque "podría ser útil".
 
 ## Siguientes pasos (Hoja de ruta)
 
-Con el backend, la base de datos y las credenciales de Supabase listos en `user-secrets`, los pasos siguientes son:
+El frontend y los secretos del backend ya están configurados en este equipo; la conexión PostgreSQL
+y el acceso administrativo a Auth se comprobaron el 2026-10-31. Falta confirmar el correo del
+propietario y completar el recorrido autenticado. Los pasos siguientes son:
 
 ### Paso 0 — Higiene del repositorio (completado el 2026-10-18)
 

@@ -232,6 +232,200 @@ namespace Paqueteria.Api.Data.Migrations
                     b.ToTable("clientes", "paqueteria");
                 });
 
+            modelBuilder.Entity("Paqueteria.Api.Entities.ContabilidadAsiento", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint")
+                        .HasColumnName("id");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+
+                    b.Property<long>("AgenciaId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint")
+                        .HasColumnName("agencia_id")
+                        .HasDefaultValueSql("paqueteria.fn_agencia_actual()");
+
+                    b.Property<string>("Concepto")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("concepto");
+
+                    b.Property<DateTimeOffset>("CreadoEn")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("creado_en")
+                        .HasDefaultValueSql("now()");
+
+                    b.Property<long>("CreadoXid")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint")
+                        .HasColumnName("creado_xid")
+                        .HasDefaultValueSql("txid_current()");
+
+                    b.Property<DateOnly>("Fecha")
+                        .HasColumnType("date")
+                        .HasColumnName("fecha");
+
+                    b.Property<string>("Referencia")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("referencia");
+
+                    b.Property<long>("RegistradoPorUsuarioId")
+                        .HasColumnType("bigint")
+                        .HasColumnName("registrado_por_usuario_id");
+
+                    b.Property<long?>("ReversionDeId")
+                        .HasColumnType("bigint")
+                        .HasColumnName("reversion_de_id");
+
+                    b.HasKey("Id")
+                        .HasName("asientos_contables_pkey");
+
+                    b.HasAlternateKey("Id", "AgenciaId")
+                        .HasName("uq_asientos_contables_id_agencia");
+
+                    b.HasIndex("AgenciaId", "Fecha")
+                        .HasDatabaseName("ix_asientos_contables_fecha");
+
+                    b.HasIndex("AgenciaId", "ReversionDeId")
+                        .IsUnique()
+                        .HasDatabaseName("uq_asientos_contables_reversion")
+                        .HasFilter("reversion_de_id IS NOT NULL");
+
+                    b.ToTable("asientos_contables", "paqueteria");
+                });
+
+            modelBuilder.Entity("Paqueteria.Api.Entities.ContabilidadCuenta", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint")
+                        .HasColumnName("id");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+
+                    b.Property<bool>("Activo")
+                        .HasColumnType("boolean")
+                        .HasColumnName("activo");
+
+                    b.Property<DateTimeOffset>("ActualizadoEn")
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("actualizado_en")
+                        .HasDefaultValueSql("now()");
+
+                    b.Property<long>("AgenciaId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint")
+                        .HasColumnName("agencia_id")
+                        .HasDefaultValueSql("paqueteria.fn_agencia_actual()");
+
+                    b.Property<string>("Clasificacion")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("clasificacion");
+
+                    b.Property<string>("Codigo")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("codigo");
+
+                    b.Property<DateTimeOffset>("CreadoEn")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("creado_en")
+                        .HasDefaultValueSql("now()");
+
+                    b.Property<string>("Naturaleza")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("naturaleza");
+
+                    b.Property<string>("Nombre")
+                        .IsRequired()
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)")
+                        .HasColumnName("nombre");
+
+                    b.Property<string>("Tipo")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("tipo");
+
+                    b.HasKey("Id")
+                        .HasName("cuentas_contables_pkey");
+
+                    b.HasAlternateKey("Id", "AgenciaId")
+                        .HasName("uq_cuentas_contables_id_agencia");
+
+                    b.HasIndex("AgenciaId", "Codigo")
+                        .IsUnique()
+                        .HasDatabaseName("uq_cuentas_contables_codigo");
+
+                    b.ToTable("cuentas_contables", "paqueteria");
+                });
+
+            modelBuilder.Entity("Paqueteria.Api.Entities.ContabilidadPartida", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint")
+                        .HasColumnName("id");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+
+                    b.Property<long>("AgenciaId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint")
+                        .HasColumnName("agencia_id")
+                        .HasDefaultValueSql("paqueteria.fn_agencia_actual()");
+
+                    b.Property<long>("AsientoId")
+                        .HasColumnType("bigint")
+                        .HasColumnName("asiento_id");
+
+                    b.Property<long>("CuentaId")
+                        .HasColumnType("bigint")
+                        .HasColumnName("cuenta_id");
+
+                    b.Property<decimal>("Debe")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)")
+                        .HasColumnName("debe");
+
+                    b.Property<string>("Detalle")
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)")
+                        .HasColumnName("detalle");
+
+                    b.Property<decimal>("Haber")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)")
+                        .HasColumnName("haber");
+
+                    b.HasKey("Id")
+                        .HasName("partidas_contables_pkey");
+
+                    b.HasAlternateKey("Id", "AgenciaId")
+                        .HasName("uq_partidas_contables_id_agencia");
+
+                    b.HasIndex("AsientoId")
+                        .HasDatabaseName("ix_partidas_contables_asiento");
+
+                    b.HasIndex("CuentaId")
+                        .HasDatabaseName("ix_partidas_contables_cuenta");
+
+                    b.ToTable("partidas_contables", "paqueteria");
+                });
+
             modelBuilder.Entity("Paqueteria.Api.Entities.Correlativo", b =>
                 {
                     b.Property<long>("AgenciaId")
@@ -1523,6 +1717,71 @@ namespace Paqueteria.Api.Data.Migrations
                         .HasConstraintName("clientes_agencia_id_fkey");
                 });
 
+            modelBuilder.Entity("Paqueteria.Api.Entities.ContabilidadAsiento", b =>
+                {
+                    b.HasOne("Paqueteria.Api.Entities.Agencia", null)
+                        .WithMany()
+                        .HasForeignKey("AgenciaId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired()
+                        .HasConstraintName("asientos_contables_agencia_id_fkey");
+
+                    b.HasOne("Paqueteria.Api.Entities.Usuario", null)
+                        .WithMany()
+                        .HasForeignKey("RegistradoPorUsuarioId", "AgenciaId")
+                        .HasPrincipalKey("Id", "AgenciaId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired()
+                        .HasConstraintName("fk_asientos_contables_usuario");
+
+                    b.HasOne("Paqueteria.Api.Entities.ContabilidadAsiento", null)
+                        .WithMany()
+                        .HasForeignKey("ReversionDeId", "AgenciaId")
+                        .HasPrincipalKey("Id", "AgenciaId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .HasConstraintName("fk_asientos_contables_reversion");
+                });
+
+            modelBuilder.Entity("Paqueteria.Api.Entities.ContabilidadCuenta", b =>
+                {
+                    b.HasOne("Paqueteria.Api.Entities.Agencia", null)
+                        .WithMany()
+                        .HasForeignKey("AgenciaId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired()
+                        .HasConstraintName("cuentas_contables_agencia_id_fkey");
+                });
+
+            modelBuilder.Entity("Paqueteria.Api.Entities.ContabilidadPartida", b =>
+                {
+                    b.HasOne("Paqueteria.Api.Entities.Agencia", null)
+                        .WithMany()
+                        .HasForeignKey("AgenciaId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired()
+                        .HasConstraintName("partidas_contables_agencia_id_fkey");
+
+                    b.HasOne("Paqueteria.Api.Entities.ContabilidadAsiento", "Asiento")
+                        .WithMany("Partidas")
+                        .HasForeignKey("AsientoId", "AgenciaId")
+                        .HasPrincipalKey("Id", "AgenciaId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired()
+                        .HasConstraintName("fk_partidas_contables_asiento");
+
+                    b.HasOne("Paqueteria.Api.Entities.ContabilidadCuenta", "Cuenta")
+                        .WithMany()
+                        .HasForeignKey("CuentaId", "AgenciaId")
+                        .HasPrincipalKey("Id", "AgenciaId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired()
+                        .HasConstraintName("fk_partidas_contables_cuenta");
+
+                    b.Navigation("Asiento");
+
+                    b.Navigation("Cuenta");
+                });
+
             modelBuilder.Entity("Paqueteria.Api.Entities.Correlativo", b =>
                 {
                     b.HasOne("Paqueteria.Api.Entities.Agencia", null)
@@ -1861,6 +2120,11 @@ namespace Paqueteria.Api.Data.Migrations
                     b.Navigation("Rol");
 
                     b.Navigation("Usuario");
+                });
+
+            modelBuilder.Entity("Paqueteria.Api.Entities.ContabilidadAsiento", b =>
+                {
+                    b.Navigation("Partidas");
                 });
 
             modelBuilder.Entity("Paqueteria.Api.Entities.Embarque", b =>
