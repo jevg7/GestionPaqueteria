@@ -32,15 +32,16 @@ su JWKS respondieron HTTP 200. La URL de referencia del proyecto está en `../CL
 de Git. La configuración rechaza claves privadas, URLs inválidas y HTTP remoto. Si faltan
 credenciales, el formulario indica que el acceso aún no está configurado y permanece deshabilitado.
 
-Estado local del 2026-10-31: `.env.local` y los user-secrets del backend están configurados.
-La conexión PostgreSQL real y el acceso administrativo a Auth fueron validados. El propietario
-configurado existe, pero su correo todavía no está confirmado; el recorrido de login sigue pendiente.
-
-Actualización del 2026-11-01: se añadió un segundo propietario con correo confirmado,
-se verificó su perfil `PLATAFORMA` activo y el usuario confirmó que pudo entrar al panel.
-El reenvío de confirmación del primer propietario fue aceptado por Supabase. Siguen
-pendientes las invitaciones del ADMIN y las operaciones reales de la agencia.
-Ver el [informe de comprobación](../docs/comprobacion-conexion-2026-11-01.md).
+Estado local del 2026-11-02: frontend y API apuntan al proyecto
+`wqvkkwholnpdurjcussq`. Se trasladaron las tres cuentas confirmadas de Auth,
+los dos propietarios, el administrador de agencia y la configuración existente,
+conservando correos, UUID, hashes de contraseña y permisos. Las migraciones Baseline
+y Contabilidad están aplicadas. Auth y la API fueron comprobados con las tres cuentas
+mediante sesiones temporales sin envío de correos; el frontend compila con la URL nueva.
+Abrir `http://localhost:5173` e iniciar sesión de nuevo con las credenciales habituales.
+Ver el [informe de migración](../docs/migracion-supabase-2026-11-02.md).
+La [comprobación del 2026-11-01](../docs/comprobacion-conexion-2026-11-01.md)
+describe el proyecto anterior.
 
 La API necesita `ConnectionStrings:Paqueteria`, `Auth:Issuer`, `Supabase:Url`,
 `Supabase:ServiceRoleKey`, `Supabase:InviteRedirectUrl` y `Plataforma:Propietarios:0`

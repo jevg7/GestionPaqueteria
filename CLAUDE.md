@@ -612,7 +612,20 @@ Responder: qué problema del negocio resuelve, qué actor la usa, qué datos nec
 qué entidad modifica, qué permisos requiere, si genera auditoría y cómo se prueba.
 No implementar algo solo porque "podría ser útil".
 
-## Estado actual (revisado el 2026-10-31)
+## Estado actual (revisado el 2026-11-02)
+
+### Cambio de proyecto Supabase (2026-11-02)
+
+Proyecto activo: `wqvkkwholnpdurjcussq`, URL
+`https://wqvkkwholnpdurjcussq.supabase.co`, pooler de sesión
+`aws-0-us-east-2.pooler.supabase.com:5432`. Frontend y user-secrets del backend
+ya apuntan a ese proyecto. Se aplicaron Baseline y Contabilidad y se trasladaron
+las tres cuentas Auth confirmadas, dos propietarios, un administrador, dos agencias
+y su configuración, preservando UUID, hashes de contraseña, estados y roles.
+API con login restringido `paqueteria_api_app`, TLS VerifyFull, 19 tablas con RLS
+y 20 políticas. Se comprobó el aislamiento real en ambas agencias y el acceso HTTP
+con las tres cuentas. Detalles, alcance y recuperación de configuración:
+`docs/migracion-supabase-2026-11-02.md`.
 
 ### Extensión de contabilidad (2026-11-01)
 
@@ -636,11 +649,12 @@ asientos del módulo: facturas y pagos operativos no se contabilizan automática
   PostgreSQL 16 local y en Supabase real).
 - [x] Solución .NET 10 (`backend/Paqueteria.slnx`), entidades EF Core, `DbContext`, migración `Baseline` y
   tests de integración (`flujo_completo.sql` completo, `HasPendingModelChanges() = false`, modelo = catálogo real).
-- [x] **Base de datos y Auth de Supabase conectados y migrados (`effwbofqvchwffnpxbng`):**
-  - Migración `20260930001535_Baseline` aplicada por el pooler en modo sesión (`:5432`).
-  - Rol de la API `paqueteria_api_app` creado con `search_path = paqueteria, public, extensions` y miembro de `paqueteria_api`.
-  - `database/seed.sql` cargado y `database/tests/flujo_completo.sql` verificado en Supabase (`TODAS LAS PRUEBAS PASARON`).
-  - Configurados en `user-secrets`: `ConnectionStrings:Paqueteria`, `ConnectionStrings:PaqueteriaOwner`, `Auth:Issuer` (`https://effwbofqvchwffnpxbng.supabase.co/auth/v1`), `Supabase:Url` (`https://effwbofqvchwffnpxbng.supabase.co`), `Supabase:InviteRedirectUrl` (`http://localhost:5173/aceptar-invitacion`), `Supabase:ServiceRoleKey` y `Plataforma:Propietarios:0`.
+- [x] **Base de datos y Auth conectados al proyecto nuevo (`wqvkkwholnpdurjcussq`):**
+  - Baseline y Contabilidad aplicadas por EF Core con historial registrado, a través del pooler de sesión (`:5432`).
+  - Login de API `paqueteria_api_app`, miembro de `paqueteria_api`, sin superusuario, propiedad de tablas ni bypass RLS.
+  - Usuarios y configuración importados del proyecto anterior; catálogos comparados y secuencias ajustadas.
+  - Configurados en user-secrets: conexiones de API/dueño, emisor y JWKS nuevos, URL y clave secreta de Supabase, redirección local y ambos correos de propietarios.
+  - Fuente conservada: `effwbofqvchwffnpxbng`; las comprobaciones históricas de `seed.sql` y `flujo_completo.sql` de octubre corresponden a ese proyecto.
 - [x] Infraestructura base de la API: Swagger/OpenAPI con esquema `Bearer` en desarrollo, ProblemDetails,
   manejo global de errores y SQLSTATE, CORS configurable, logging sanitizado y `GET /health`.
 - [x] Autenticación con Supabase Auth (JWKS), usuario activo y roles desde la BD, `GET /api/me`.
@@ -659,7 +673,7 @@ asientos del módulo: facturas y pagos operativos no se contabilizan automática
 
 ### Estado del entorno y pendientes detectados
 
-- [ ] **Segundo dueño de la plataforma (opcional cuando esté listo):** agregar `Plataforma:Propietarios:1` en `user-secrets` (el primero ya está configurado).
+- [x] **Dos dueños de la plataforma:** ambos correos siguen configurados y sus perfiles y cuentas confirmadas están trasladados al proyecto nuevo.
 - [x] **Repositorio Git (2026-10-18):** inicializado en esta carpeta con `.gitignore`, `.gitattributes` y el commit
   inicial en `main` (de ahí sale `develop`). `Claude stuff/` (copias v1 del esquema) quedó archivada fuera del workspace.
 - [x] **Frontend Fase 1 (`frontend/`, 2026-10-24):** React + TypeScript + Vite + Tailwind,
